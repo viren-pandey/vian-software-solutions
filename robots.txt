@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /404.html
+
+# Replace https://example.com with the production domain when one is assigned.
+Sitemap: https://example.com/sitemap.xml
