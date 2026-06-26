@@ -238,7 +238,7 @@ export default async function handler(req: any, res: any) {
           notes,
         },
       })
-      await notifyAdmins('new_quotation', { quotationId: quotation.id, title: quotation.title, userName: user.name })
+      await notifyAdmins('new_quotation', { quotationId: quotation.id, title: quotation.title, userName: user.name, message: `New quotation "${quotation.title}" submitted by ${user.name}.` })
       await createNotification(user.id, 'quotation_submitted', { quotationId: quotation.id, title: quotation.title, message: 'Your quotation request has been submitted successfully.' })
       return res.status(201).json(quotation)
     }
