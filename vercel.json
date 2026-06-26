@@ -19,6 +19,10 @@
     { "source": "/shipping-policy", "destination": "/shipping-policy.html" },
     { "source": "/support", "destination": "/support.html" },
     { "source": "/technologies", "destination": "/technologies.html" },
-    { "source": "/terms-and-conditions", "destination": "/terms-and-conditions.html" }
+    { "source": "/terms-and-conditions", "destination": "/terms-and-conditions.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/register", "destination": "/register.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/admin", "destination": "/admin.html" }
   ]
 }
