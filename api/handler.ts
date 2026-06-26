@@ -503,6 +503,27 @@ export default async function handler(req: any, res: any) {
       return res.json(payments)
     }
 
+    // --- Admin Chats ---
+    if (path === '/api/admin/chats' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const quotations = await prisma.quotation.findMany({
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      })
+      const chats = quotations.map(q => ({
+        quotationId: q.id,
+        title: q.title,
+        status: q.status,
+        user: q.user,
+        lastMessage: q.messages[0] || null,
+        updatedAt: q.updatedAt,
+      }))
+      return res.json(chats)
+    }
+
     // --- Notifications ---
     if (path === '/api/notifications' && req.method === 'GET') {
       if (!requireAuth(user, res)) return

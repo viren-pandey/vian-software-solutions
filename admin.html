@@ -63,6 +63,28 @@
     [data-theme="dark"] .badge-ACCEPTED { background: rgba(52,211,153,0.15); color: #6EE7B7; }
     [data-theme="dark"] .badge-PAID { background: rgba(52,211,153,0.15); color: #6EE7B7; }
     [data-theme="dark"] .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
+    .chat-layout { display:flex;height:calc(100vh - var(--nav-height) - 80px);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);max-height:700px }
+    .chat-list { width:320px;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;background:var(--bg-secondary) }
+    .chat-list-item { display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--border-light);transition:background .1s }
+    .chat-list-item:hover,.chat-list-item.active { background:var(--surface-hover) }
+    .chat-avatar { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;background:var(--accent-light);color:var(--accent) }
+    .chat-info { flex:1;min-width:0 }
+    .chat-info .name { font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+    .chat-info .preview { font-size:12px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px }
+    .chat-info .badge { margin-top:2px }
+    .chat-meta { text-align:right;flex-shrink:0;font-size:11px;color:var(--text-tertiary) }
+    .chat-unread { display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;margin-top:4px }
+    .chat-area { flex:1;display:flex;flex-direction:column;background:var(--surface) }
+    .chat-empty { flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);font-size:14px }
+    .chat-header { padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface) }
+    .chat-msgs { flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px }
+    .chat-bubble { max-width:75%;padding:10px 14px;border-radius:var(--radius-lg);font-size:13px;line-height:1.5;position:relative }
+    .chat-bubble.admin { align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px }
+    .chat-bubble.client { align-self:flex-start;background:var(--surface-hover);color:var(--text);border-bottom-left-radius:4px }
+    .chat-bubble .time { font-size:10px;opacity:0.6;margin-top:4px;text-align:right }
+    .chat-input { padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--surface) }
+    .chat-input input { flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-secondary);color:var(--text);font-size:13px;outline:none }
+    .chat-input input:focus { border-color:var(--accent) }
     .dash-form { max-width: 500px; }
     .dash-form .form-group { margin-bottom: 14px; }
     .dash-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
@@ -148,6 +170,7 @@ async function loadPage(page) {
     else if (page === 'users') await showUsers(main)
     else if (page === 'projects') await showProjects(main)
     else if (page === 'payments') await showPayments(main)
+    else if (page === 'chats') await showChats(main)
   } catch (e) {
     main.innerHTML = `<div class="empty-state" style="text-align:center;padding:64px"><h3>Error</h3><p>${esc(e.message)}</p></div>`
   }
@@ -474,6 +497,116 @@ window.verifyPayment = async function(id, action) {
   }
 }
 
+let activeChatId = null
+
+async function showChats(main) {
+  const chats = await api('/api/admin/chats')
+  main.innerHTML = `
+    <div class="admin-header" style="margin-bottom:0"><div><h1>Chats</h1></div></div>
+    <div class="chat-layout">
+      <div class="chat-list">
+        ${chats.length === 0 ? '<div style="padding:32px;text-align:center;color:var(--text-tertiary);font-size:13px">No conversations yet</div>' :
+          chats.map(c => {
+            const initial = (c.user?.name || '?')[0].toUpperCase()
+            const lastMsg = c.lastMessage?.body?.substring(0, 50) || 'No messages yet'
+            const time = c.lastMessage ? new Date(c.lastMessage.createdAt).toLocaleString('en-IN', { hour:'2-digit', minute:'2-digit' }) : ''
+            return `
+              <div class="chat-list-item ${c.quotationId === activeChatId ? 'active' : ''}" onclick="openChat('${c.quotationId}')">
+                <div class="chat-avatar">${initial}</div>
+                <div class="chat-info">
+                  <div class="name">${esc(c.user?.name || 'Unknown')}</div>
+                  <div class="preview">${esc(c.title)} &middot; ${esc(lastMsg)}</div>
+                  <span class="badge badge-${c.status}">${c.status.replace(/_/g, ' ')}</span>
+                </div>
+                <div class="chat-meta">${time}</div>
+              </div>
+            `
+          }).join('')
+        }
+      </div>
+      <div class="chat-area">
+        ${activeChatId ? '<div class="chat-empty">Loading chat...</div>' : '<div class="chat-empty">Select a conversation to start chatting</div>'}
+      </div>
+    </div>
+  `
+  if (activeChatId) loadChatMessages(activeChatId)
+}
+
+window.openChat = async function(quotationId) {
+  activeChatId = quotationId
+  const main = document.querySelector('.admin-main')
+  const list = main.querySelector('.chat-list')
+  if (list) {
+    list.querySelectorAll('.chat-list-item').forEach(el => el.classList.remove('active'))
+    const item = list.querySelector(`[onclick*="'${quotationId}'"]`)
+    if (item) item.classList.add('active')
+  }
+  await loadChatMessages(quotationId)
+}
+
+async function loadChatMessages(quotationId) {
+  const area = document.querySelector('.chat-area')
+  if (!area) return
+  area.innerHTML = '<div class="chat-empty">Loading...</div>'
+  try {
+    const q = await api('/api/admin/quotations/' + quotationId)
+    const msgs = q.messages || []
+    area.innerHTML = `
+      <div class="chat-header">
+        <div class="chat-avatar">${(q.user?.name || '?')[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:600;font-size:14px">${esc(q.user?.name || 'Unknown')}</div>
+          <div style="font-size:12px;color:var(--text-tertiary)">${esc(q.title)} &middot; <span class="badge badge-${q.status}">${q.status.replace(/_/g, ' ')}</span></div>
+        </div>
+        <div style="margin-left:auto">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="showAdminQuotationDetail('${quotationId}')">Full Details</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="chatMsgBox">
+        ${msgs.length === 0 ? '<div style="text-align:center;padding:32px;color:var(--text-tertiary);font-size:13px">No messages yet. Start the conversation!</div>' :
+          msgs.map(m => `
+            <div class="chat-bubble ${m.senderId === user.id ? 'admin' : 'client'}">
+              <div style="font-size:10px;opacity:0.7;margin-bottom:2px">${esc(m.sender?.name || '')}</div>
+              <div>${esc(m.body)}</div>
+              <div class="time">${new Date(m.createdAt).toLocaleString('en-IN', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })}</div>
+            </div>
+          `).join('')
+        }
+      </div>
+      <form class="chat-input" id="chatForm" onsubmit="return sendChatMessage(event,'${quotationId}')">
+        <input type="text" id="chatInput" placeholder="Type a message..." autofocus>
+        <button type="submit" class="btn btn-primary" style="padding:10px 18px;border-radius:999px">Send</button>
+      </form>
+    `
+    const box = document.getElementById('chatMsgBox')
+    if (box) box.scrollTop = box.scrollHeight
+    document.getElementById('chatInput')?.focus()
+  } catch (e) {
+    area.innerHTML = '<div class="chat-empty">Error loading chat: ' + esc(e.message) + '</div>'
+  }
+}
+
+window.sendChatMessage = async function(e, quotationId) {
+  e.preventDefault()
+  const input = document.getElementById('chatInput')
+  const body = input.value.trim()
+  if (!body) return false
+  input.disabled = true
+  try {
+    await api('/api/admin/quotations/' + quotationId + '/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body }),
+    })
+    input.value = ''
+    await loadChatMessages(quotationId)
+  } catch (e) {
+    showToast(e.message)
+  }
+  input.disabled = false
+  return false
+}
+
 async function fetchAdminNotifications() {
   try {
     const data = await api('/api/notifications')
@@ -536,6 +669,7 @@ function logout() {
           <a data-page="users" onclick="loadPage('users')">Users</a>
           <a data-page="projects" onclick="loadPage('projects')">Projects</a>
           <a data-page="payments" onclick="loadPage('payments')">Payments</a>
+          <a data-page="chats" onclick="loadPage('chats')">Chats</a>
           <h3>Account</h3>
           <a style="position:relative" onclick="showAdminNotifications()">Notifications <span id="adminNotifBadge" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:999px;font-weight:700"></span></a>
           <a onclick="logout()">Sign Out</a>
