@@ -193,16 +193,15 @@ export default async function handler(req: any, res: any) {
       if (!requireAuth(user, res)) return
       const q = await prisma.quotation.findFirst({
         where: { id: quotationMatch[1], userId: user.id },
-        include: {
-          service: true,
-          items: true,
-          project: true,
-          invoice: true,
-          messages: { orderBy: { createdAt: 'asc' }, include: { sender: { select: { id: true, name: true } } } },
-        },
+        include: { service: true, items: true, project: true, invoice: true },
       })
       if (!q) return res.status(404).json({ error: 'Quotation not found' })
-      return res.json(q)
+      const messages = await prisma.message.findMany({
+        where: { threadType: 'quotation', threadId: q.id },
+        orderBy: { createdAt: 'asc' },
+        include: { sender: { select: { id: true, name: true } } },
+      })
+      return res.json({ ...q, messages })
     }
 
     const quotationMsgMatch = path.match(/^\/api\/quotations\/([^/]+)\/messages$/)
@@ -344,11 +343,15 @@ export default async function handler(req: any, res: any) {
           items: true,
           project: true,
           invoice: true,
-          messages: { orderBy: { createdAt: 'asc' }, include: { sender: { select: { id: true, name: true } } } },
         },
       })
       if (!q) return res.status(404).json({ error: 'Quotation not found' })
-      return res.json(q)
+      const messages = await prisma.message.findMany({
+        where: { threadType: 'quotation', threadId: q.id },
+        orderBy: { createdAt: 'asc' },
+        include: { sender: { select: { id: true, name: true } } },
+      })
+      return res.json({ ...q, messages })
     }
 
     const adminQuotationMsgMatch = path.match(/^\/api\/admin\/quotations\/([^/]+)\/messages$/)
