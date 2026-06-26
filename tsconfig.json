@@ -12,12 +12,7 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "declaration": true,
-    "types": ["node"],
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["server/src/*"]
-    }
+    "types": ["node"]
   },
   "include": ["server/src/**/*"],
   "exclude": ["node_modules", "dist"]
