@@ -65,6 +65,7 @@
     [data-theme="dark"] .badge-PAID { background: rgba(52,211,153,0.15); color: #6EE7B7; }
     [data-theme="dark"] .badge-REJECTED { background: rgba(248,113,113,0.15); color: #FCA5A5; }
     [data-theme="dark"] .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
+    @media print { body * { visibility: hidden; } .invoice-print, .invoice-print * { visibility: visible; } .invoice-print { position: fixed; inset: 0; padding: 20px; background: #fff; color: #000; } .inv-no-print { display: none !important; } }
     .dash-form { max-width: 600px; }
     .dash-form .form-group { margin-bottom: 16px; }
     .dash-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
@@ -589,7 +590,11 @@ async function showInvoices(main) {
             <td>₹${Number(inv.amount).toLocaleString()}</td>
             <td><span class="badge badge-${statusClass}">${displayStatus}</span></td>
             <td>${new Date(inv.issuedAt).toLocaleDateString()}</td>
-            <td>${inv.status === 'issued' && !hasPendingPay ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : hasPendingPay ? '<span style="font-size:12px;color:var(--text-tertiary)">Awaiting verification</span>' : ''}</td>
+            <td style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="showInvoiceView('${inv.id}')">View</button>
+              ${inv.status === 'issued' && !hasPendingPay ? `<button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : ''}
+              ${hasPendingPay ? '<span style="font-size:11px;color:var(--text-tertiary)">Awaiting verification</span>' : ''}
+            </td>
           </tr>
         `}).join('')}</tbody>
       </table>
@@ -668,6 +673,130 @@ async function showPayments(main) {
       </table>
     `}
   `
+}
+
+function numberToWords(n) {
+  const a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen ']
+  const b = ['','','Twenty ','Thirty ','Forty ','Fifty ','Sixty ','Seventy ','Eighty ','Ninety ']
+  if (n === 0) return 'Zero'
+  const f = (num) => { let s = ''; if (num > 99) { s += a[Math.floor(num/100)] + 'Hundred '; num %= 100 } if (num > 19) { s += b[Math.floor(num/10)]; num %= 10 } if (num > 0) s += a[num]; return s }
+  let res = ''
+  if (n >= 10000000) { res += f(Math.floor(n/10000000)) + 'Crore '; n %= 10000000 }
+  if (n >= 100000) { res += f(Math.floor(n/100000)) + 'Lakh '; n %= 100000 }
+  if (n >= 1000) { res += f(Math.floor(n/1000)) + 'Thousand '; n %= 1000 }
+  if (n >= 100) { res += f(Math.floor(n/100)) + 'Hundred '; n %= 100 }
+  if (n > 0) res += f(n)
+  return res.trim() + ' Rupees Only'
+}
+
+window.showInvoiceView = async function(invoiceId) {
+  const main = document.querySelector('.dash-main')
+  main.innerHTML = '<div class="loading-state">Loading...</div>'
+  try {
+    const inv = await api('/api/invoices/' + invoiceId)
+    const total = Number(inv.amount)
+    const gst = Math.round(total * 18 / 118 * 100) / 100
+    const base = Math.round((total - gst) * 100) / 100
+    const dueDate = new Date(inv.issuedAt)
+    dueDate.setDate(dueDate.getDate() + (inv.quotation?.quoteValidityDays || 15))
+    const statusLabel = inv.status === 'paid' ? 'PAID' : inv.payments?.some(p => p.status === 'pending') ? 'Payment Pending Verification' : 'UNPAID'
+    const statusColor = inv.status === 'paid' ? '#16A34A' : '#DC2626'
+
+    main.innerHTML = `
+      <div class="dash-header inv-no-print">
+        <div>
+          <h1>Invoice ${esc(inv.invoiceNumber)}</h1>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+          <button class="btn btn-secondary" onclick="loadPage('invoices')">Back</button>
+        </div>
+      </div>
+      <div class="invoice-print" style="background:#fff;color:#000;border:1px solid #e5e7eb;border-radius:8px;padding:40px;max-width:800px;margin:0 auto;font-family:Arial,sans-serif;font-size:13px;line-height:1.5">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:24px;margin-bottom:24px">
+          <div>
+            <div style="font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:-0.5px">VIAN</div>
+            <div style="font-size:11px;font-weight:700;color:#1e3a5f;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Software Solutions</div>
+          </div>
+          <div style="text-align:right;font-size:11px;color:#374151;line-height:1.6">
+            <strong style="font-size:14px;color:#1e3a5f">TAX INVOICE</strong><br>
+            <span>Vian Software Solutions Pvt. Ltd.</span><br>
+            <span>123, Tech Park, Sector 21</span><br>
+            <span>Gurugram, Haryana - 122001</span><br>
+            <span>GSTIN: 06ABCDE1234F1Z5</span><br>
+            <span>Email: finance@viannn.online</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #e5e7eb">
+          <div style="font-size:12px">
+            <strong style="color:#1e3a5f">Bill To:</strong><br>
+            <span style="font-weight:700;color:#111">${esc(user.name)}</span><br>
+            <span style="color:#374151">${esc(user.email)}</span>
+          </div>
+          <div style="text-align:right;font-size:12px">
+            <table style="border-collapse:collapse;font-size:12px">
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Invoice No.</td><td style="font-weight:700;color:#111">${esc(inv.invoiceNumber)}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Date</td><td style="color:#111">${new Date(inv.issuedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Due Date</td><td style="color:#111">${dueDate.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Status</td><td style="font-weight:700;color:${statusColor}">${statusLabel}</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px">
+          <thead>
+            <tr style="background:#1e3a5f;color:#fff">
+              <th style="padding:10px 12px;text-align:left;font-weight:600">#</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:600">Description of Services</th>
+              <th style="padding:10px 12px;text-align:right;font-weight:600">HSN/SAC</th>
+              <th style="padding:10px 12px;text-align:right;font-weight:600">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:12px;text-align:center;vertical-align:top">1</td>
+              <td style="padding:12px;vertical-align:top">
+                <strong style="color:#111">${esc(inv.quotation?.title || 'Software Development Services')}</strong>
+                ${inv.quotation?.description ? `<br><span style="color:#6b7280;font-size:11px">${esc(inv.quotation.description)}</span>` : ''}
+                ${inv.quotation?.goals ? `<br><span style="color:#6b7280;font-size:11px">Goals: ${esc(inv.quotation.goals)}</span>` : ''}
+              </td>
+              <td style="padding:12px;text-align:right;vertical-align:top;color:#6b7280">9983</td>
+              <td style="padding:12px;text-align:right;vertical-align:top;font-weight:600;color:#111">${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+          <table style="border-collapse:collapse;font-size:13px;min-width:280px">
+            <tr><td style="padding:6px 12px;color:#6b7280">Net Amount</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+            <tr><td style="padding:6px 12px;color:#6b7280">IGST @ 18%</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${gst.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+            <tr style="border-top:2px solid #1e3a5f"><td style="padding:8px 12px;font-weight:900;color:#1e3a5f;font-size:15px">Total Amount</td><td style="padding:8px 12px;text-align:right;font-weight:900;color:#1e3a5f;font-size:15px">₹ ${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+          </table>
+        </div>
+
+        <div style="font-size:11px;color:#6b7280;padding-top:12px;border-top:1px solid #e5e7eb;margin-bottom:16px">
+          <strong style="color:#374151">Amount in Words:</strong><br>
+          <span style="font-style:italic">${numberToWords(Math.round(total))}</span>
+        </div>
+
+        <div style="font-size:11px;color:#6b7280;padding-top:12px;border-top:1px solid #e5e7eb;margin-bottom:16px">
+          <strong style="color:#374151">Terms & Conditions:</strong><br>
+          1. Payment is due within ${inv.quotation?.quoteValidityDays || 15} days from the invoice date.<br>
+          2. Late payment may incur additional charges at 2% per month.<br>
+          3. This invoice is subject to Gurugram jurisdiction.<br>
+          4. This is a computer-generated invoice and does not require a physical signature.
+        </div>
+
+        <div style="text-align:center;font-size:10px;color:#9ca3af;padding-top:16px;border-top:1px solid #e5e7eb">
+          <span style="font-weight:700;color:#1e3a5f">Vian Software Solutions</span> &bull; GSTIN: 06ABCDE1234F1Z5 &bull; Email: finance@viannn.online<br>
+          <span>Thank you for your business!</span>
+        </div>
+      </div>
+    `
+  } catch (e) {
+    main.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message) + '</p></div>'
+  }
 }
 
 async function showSupport(main) {
