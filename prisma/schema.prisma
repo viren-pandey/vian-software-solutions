@@ -1,0 +1,312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  client
+  reviewer
+  admin
+}
+
+enum QuotationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  QUOTED
+  REVISION_REQUESTED
+  ACCEPTED
+  INVOICED
+  PAID
+  REJECTED
+  CANCELLED
+}
+
+enum ProjectStatus {
+  active
+  paused
+  completed
+  cancelled
+}
+
+enum InvoiceStatus {
+  issued
+  paid
+  void
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+  refunded
+}
+
+enum ThreadType {
+  quotation
+  project
+}
+
+enum TicketStatus {
+  open
+  pending
+  resolved
+  closed
+}
+
+enum AttachmentOwnerType {
+  quotation
+  message
+  ticket
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  emailVerifiedAt  DateTime? @map("email_verified_at")
+  name             String
+  companyName      String?   @map("company_name")
+  phone            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  profile         Profile?
+  roles           RoleAssignment[]
+  sessions        Session[]
+  quotations      Quotation[]
+  projects        Project[]
+  invoices        Invoice[]
+  payments        Payment[]
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+  attachments     Attachment[]
+  auditLogs       AuditLog[]
+  sentMessages    Message[]       @relation("sender")
+
+  @@map("users")
+}
+
+model Profile {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @unique @map("user_id") @db.Uuid
+  billingAddress         Json?    @map("billing_address") @db.JsonB
+  avatarUrl              String?  @map("avatar_url")
+  notificationPreferences Json?   @map("notification_preferences") @db.JsonB
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model RoleAssignment {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role   Role
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("roles")
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash")
+  deviceInfo       String?   @map("device_info")
+  ipAddress        String?   @map("ip_address")
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Service {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String  @unique
+  description String
+  category    String
+  active      Boolean @default(true)
+
+  quotations Quotation[]
+
+  @@map("services")
+}
+
+model Quotation {
+  id                   String           @id @default(uuid()) @db.Uuid
+  userId               String           @map("user_id") @db.Uuid
+  serviceId            String           @map("service_id") @db.Uuid
+  status               QuotationStatus  @default(SUBMITTED)
+  title                String
+  description          String
+  goals                String?
+  budgetRange          String?          @map("budget_range")
+  timeline             String?
+  preferredTechnologies String[]        @map("preferred_technologies")
+  referenceLinks       String[]         @map("reference_links")
+  notes                String?
+  quotedAmount         Decimal?         @map("quoted_amount") @db.Decimal(10, 2)
+  quoteValidityDays    Int?             @map("quote_validity_days")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+  items   QuotationItem[]
+  project Project?
+  invoice Invoice?
+
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  quotationId   String   @map("quotation_id") @db.Uuid
+  description   String
+  amount        Decimal  @db.Decimal(10, 2)
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_items")
+}
+
+model Project {
+  id            String        @id @default(uuid()) @db.Uuid
+  quotationId   String        @unique @map("quotation_id") @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  status        ProjectStatus @default(active)
+  startDate     DateTime?     @map("start_date")
+  targetEndDate DateTime?     @map("target_end_date")
+  internalNotes String?       @map("internal_notes")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("projects")
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  quotationId    String        @unique @map("quotation_id") @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  invoiceNumber  String        @unique @map("invoice_number")
+  amount         Decimal       @db.Decimal(10, 2)
+  status         InvoiceStatus @default(issued)
+  pdfUrl         String?       @map("pdf_url")
+  issuedAt       DateTime      @default(now()) @map("issued_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  payments  Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id                  String        @id @default(uuid()) @db.Uuid
+  invoiceId           String        @map("invoice_id") @db.Uuid
+  userId              String        @map("user_id") @db.Uuid
+  paytmTransactionId  String        @unique @map("paytm_transaction_id")
+  amount              Decimal       @db.Decimal(10, 2)
+  status              PaymentStatus @default(pending)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  paymentLogs PaymentLog[]
+
+  @@map("payments")
+}
+
+model PaymentLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  paymentId       String?   @map("payment_id") @db.Uuid
+  rawPayload      Json      @map("raw_payload") @db.JsonB
+  signatureValid  Boolean?  @map("signature_valid")
+  receivedAt      DateTime  @default(now()) @map("received_at")
+
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@map("payment_logs")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  payload   Json      @db.JsonB
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Message {
+  id         String     @id @default(uuid()) @db.Uuid
+  threadType ThreadType @map("thread_type")
+  threadId   String     @map("thread_id") @db.Uuid
+  senderId   String     @map("sender_id") @db.Uuid
+  body       String
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  sender User @relation("sender", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model SupportTicket {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  subject   String
+  status    TicketStatus @default(open)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("support_tickets")
+}
+
+model Attachment {
+  id        String               @id @default(uuid()) @db.Uuid
+  ownerType AttachmentOwnerType  @map("owner_type")
+  ownerId   String               @map("owner_id") @db.Uuid
+  fileUrl   String               @map("file_url")
+  fileName  String               @map("file_name")
+  mimeType  String               @map("mime_type")
+  sizeBytes Int                  @map("size_bytes")
+  uploadedBy String              @map("uploaded_by") @db.Uuid
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("attachments")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  actorId       String?  @map("actor_id") @db.Uuid
+  action        String
+  entityType    String   @map("entity_type")
+  entityId      String   @map("entity_id") @db.Uuid
+  previousState Json?    @map("previous_state") @db.JsonB
+  newState      Json?    @map("new_state") @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
