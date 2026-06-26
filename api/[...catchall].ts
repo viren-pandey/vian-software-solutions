@@ -56,7 +56,8 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   try {
-    const path = (req.url || '').replace(/\/$/, '')
+    const rawUrl = req.url || ''
+    const path = rawUrl.replace(/\/$/, '').split('?')[0]
     const cookies = parseCookies(req)
 
     let body: any = {}
@@ -227,7 +228,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    return res.status(404).json({ error: 'Not found' })
+    return res.status(404).json({ error: 'Not found', url: rawUrl })
   } catch (err: any) {
     console.error('API Error:', err?.message || err)
     return res.status(500).json({ error: err?.message || 'Internal server error' })

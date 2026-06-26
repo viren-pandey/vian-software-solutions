@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 async function main() {
   const email = 'pandeyviren68'
-  const password = 'pandeyviren68'
+  const password = 'pandeyviren68@gmail.com'
   const name = 'Admin'
 
   const existing = await prisma.user.findUnique({ where: { email } })
