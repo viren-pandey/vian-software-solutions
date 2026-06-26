@@ -152,8 +152,8 @@ async function showDashboard(main) {
     api('/api/quotations').catch(() => []),
     api('/api/projects').catch(() => []),
   ])
-  const active = quotations.filter((q: any) => !['REJECTED','CANCELLED'].includes(q.status))
-  const activeProjects = projects.filter((p: any) => p.status === 'active')
+  const active = quotations.filter((q) => !['REJECTED','CANCELLED'].includes(q.status))
+  const activeProjects = projects.filter((p) => p.status === 'active')
 
   main.innerHTML = `
     <div class="dash-header">
@@ -165,7 +165,7 @@ async function showDashboard(main) {
     <div class="stat-cards">
       <div class="stat-card"><div class="num">${active.length}</div><div class="label">Active Quotations</div></div>
       <div class="stat-card"><div class="num">${activeProjects.length}</div><div class="label">Active Projects</div></div>
-      <div class="stat-card"><div class="num">${quotations.filter((q: any) => q.status === 'PAID').length}</div><div class="label">Completed</div></div>
+      <div class="stat-card"><div class="num">${quotations.filter((q) => q.status === 'PAID').length}</div><div class="label">Completed</div></div>
     </div>
     <div class="welcome-card">
       <h2>Ready to start a project?</h2>
@@ -185,7 +185,7 @@ async function showDashboard(main) {
       <h3 style="margin-bottom:12px">Recent Quotations</h3>
       <table class="dash-table">
         <thead><tr><th>Title</th><th>Status</th><th>Date</th></tr></thead>
-        <tbody>${quotations.slice(0, 5).map((q: any) => `
+        <tbody>${quotations.slice(0, 5).map((q) => `
           <tr><td>${esc(q.title)}</td><td><span class="badge badge-${q.status}">${q.status}</span></td><td>${new Date(q.createdAt).toLocaleDateString()}</td></tr>
         `).join('')}</tbody>
       </table>
@@ -215,7 +215,7 @@ async function showQuotations(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Title</th><th>Service</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-        <tbody>${quotations.map((q: any) => `
+        <tbody>${quotations.map((q) => `
           <tr style="cursor:pointer" onclick="showQuotationDetail('${q.id}')">
             <td><strong>${esc(q.title)}</strong></td>
             <td>${q.service ? esc(q.service.name) : '-'}</td>
@@ -296,7 +296,7 @@ async function showQuotations(main) {
           <label>Service Type</label>
           <select id="serviceId" required>
             <option value="">Select a service...</option>
-            ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
+            ${services.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
@@ -352,8 +352,8 @@ async function showQuotations(main) {
             goals: document.getElementById('goals').value,
             budgetRange: document.getElementById('budgetRange').value,
             timeline: document.getElementById('timeline').value,
-            preferredTechnologies: document.getElementById('preferredTechnologies').value.split(',').map((s: string) => s.trim()).filter(Boolean),
-            referenceLinks: document.getElementById('referenceLinks').value.split(',').map((s: string) => s.trim()).filter(Boolean),
+            preferredTechnologies: document.getElementById('preferredTechnologies').value.split(',').map((s) => s.trim()).filter(Boolean),
+            referenceLinks: document.getElementById('referenceLinks').value.split(',').map((s) => s.trim()).filter(Boolean),
             notes: document.getElementById('notes').value,
           }),
         })
@@ -384,7 +384,7 @@ async function showProjects(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Project</th><th>Status</th><th>Start Date</th></tr></thead>
-        <tbody>${projects.map((p: any) => `
+        <tbody>${projects.map((p) => `
           <tr>
             <td><strong>${p.quotation ? esc(p.quotation.title) : 'Project'}</strong></td>
             <td><span class="badge badge-${p.status}">${p.status}</span></td>
@@ -413,14 +413,14 @@ async function showInvoices(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Invoice #</th><th>Project</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
-        <tbody>${invoices.map((inv: any) => `
+        <tbody>${invoices.map((inv) => `
           <tr>
             <td><strong>${esc(inv.invoiceNumber)}</strong></td>
             <td>${inv.quotation ? esc(inv.quotation.title) : '-'}</td>
             <td>₹${Number(inv.amount).toLocaleString()}</td>
             <td><span class="badge badge-${inv.status}">${inv.status}</span></td>
             <td>${new Date(inv.issuedAt).toLocaleDateString()}</td>
-            <td>${inv.status === 'issued' ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="payInvoice('${inv.id}')">Pay Now</button>` : ''}</td>
+            <td>${inv.status === 'issued' ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : ''}</td>
           </tr>
         `).join('')}</tbody>
       </table>
@@ -428,7 +428,7 @@ async function showInvoices(main) {
   `
 }
 
-window.payInvoice = async function(invoiceId) {
+window.payInvoice = async function(event, invoiceId) {
   const btn = event.target
   btn.disabled = true; btn.textContent = 'Processing...'
   try {
@@ -487,7 +487,7 @@ async function showPayments(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Transaction ID</th><th>Project</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-        <tbody>${payments.map((p: any) => `
+        <tbody>${payments.map((p) => `
           <tr>
             <td><strong>${esc(p.paytmTransactionId)}</strong></td>
             <td>${p.invoice?.quotation ? esc(p.invoice.quotation.title) : '-'}</td>
@@ -519,7 +519,7 @@ async function showSupport(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Subject</th><th>Status</th><th>Date</th></tr></thead>
-        <tbody>${tickets.map((t: any) => `
+        <tbody>${tickets.map((t) => `
           <tr>
             <td><strong>${esc(t.subject)}</strong></td>
             <td><span class="badge badge-${t.status}">${t.status}</span></td>
