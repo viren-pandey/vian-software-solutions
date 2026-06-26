@@ -1,6 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node'
-
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+export default function handler(_req: any, res: any) {
   res.setHeader('Content-Type', 'application/json')
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
 }

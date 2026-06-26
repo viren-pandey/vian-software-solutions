@@ -1,19 +1,15 @@
-import { VercelRequest, VercelResponse } from '@vercel/node'
-import { Pool } from '@neondatabase/serverless'
-import { PrismaNeon } from '@prisma/adapter-neon'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-const adapter = new PrismaNeon(pool)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   const origin = req.headers.origin || '*'
   res.setHeader('Access-Control-Allow-Origin', origin)
   res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Content-Type', 'application/json')
 
   if (req.method === 'OPTIONS') return res.status(200).end()
 
@@ -21,10 +17,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const path = (req.url || '').replace(/\/$/, '')
 
     if (path === '/api/health') {
-      return res.json({ status: 'ok', timestamp: new Date().toISOString() })
+      return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
     }
 
-    if ((path === '/api/auth/register' || path === '/api/auth/register/') && req.method === 'POST') {
+    if (path === '/api/auth/register' && req.method === 'POST') {
       const { email, password, name } = req.body
       if (!email || !password || !name) return res.status(400).json({ error: 'Email, password, and name are required' })
       const existing = await prisma.user.findUnique({ where: { email } })
@@ -36,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json({ user: { id: user.id, email: user.email, name: user.name } })
     }
 
-    if ((path === '/api/auth/login' || path === '/api/auth/login/') && req.method === 'POST') {
+    if (path === '/api/auth/login' && req.method === 'POST') {
       const { email, password } = req.body
       if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
       const user = await prisma.user.findUnique({ where: { email }, include: { roles: true } })
@@ -48,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(404).json({ error: 'Not found' })
   } catch (err: any) {
-    console.error('API Error:', err)
-    return res.status(500).json({ error: err.message || 'Internal server error' })
+    console.error('API Error:', err?.message || err)
+    return res.status(500).json({ error: err?.message || 'Internal server error' })
   }
 }
