@@ -265,6 +265,18 @@ export default async function handler(req: any, res: any) {
       return res.json(invoices)
     }
 
+    // --- Client Invoice Detail ---
+    const invoiceDetailMatch = path.match(/^\/api\/invoices\/([^/]+)$/)
+    if (invoiceDetailMatch && req.method === 'GET') {
+      if (!requireAuth(user, res)) return
+      const inv = await prisma.invoice.findFirst({
+        where: { id: invoiceDetailMatch[1], userId: user.id },
+        include: { quotation: true, payments: true },
+      })
+      if (!inv) return res.status(404).json({ error: 'Invoice not found' })
+      return res.json(inv)
+    }
+
     // --- Client Payments ---
     if (path === '/api/payments' && req.method === 'GET') {
       if (!requireAuth(user, res)) return
