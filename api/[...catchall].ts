@@ -59,13 +59,17 @@ export default async function handler(req: any, res: any) {
     const rawUrl = req.url || ''
     const cookies = parseCookies(req)
 
-    // Reconstruct full path: Vercel catch-all passes segments as query params
-    let path = rawUrl.split('?')[0].replace(/\/$/, '')
-    if (rawUrl.includes('?...catchall=')) {
-      const qs = rawUrl.split('?...')[1] || ''
+    let path: string
+    const qIndex = rawUrl.indexOf('?')
+    if (qIndex !== -1 && rawUrl.includes('catchall=')) {
+      const base = rawUrl.slice(0, qIndex).replace(/\/$/, '')
+      const qs = rawUrl.slice(qIndex + 1)
       const params = new URLSearchParams(qs)
       const segments = params.getAll('catchall')
-      if (segments.length > 0) path += '/' + segments.join('/')
+      const extra = segments.slice(1).join('/')
+      path = extra ? base + '/' + extra : base
+    } else {
+      path = rawUrl.split('?')[0].replace(/\/$/, '')
     }
 
     let body: any = {}
