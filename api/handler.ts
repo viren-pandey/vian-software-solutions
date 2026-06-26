@@ -56,21 +56,8 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   try {
-    const rawUrl = req.url || ''
     const cookies = parseCookies(req)
-
-    let path: string
-    const qIndex = rawUrl.indexOf('?')
-    if (qIndex !== -1 && rawUrl.includes('catchall=')) {
-      const base = rawUrl.slice(0, qIndex).replace(/\/$/, '')
-      const qs = rawUrl.slice(qIndex + 1)
-      const params = new URLSearchParams(qs)
-      const segments = params.getAll('catchall')
-      const extra = segments.slice(1).join('/')
-      path = extra ? base + '/' + extra : base
-    } else {
-      path = rawUrl.split('?')[0].replace(/\/$/, '')
-    }
+    const path = (req.url || '').split('?')[0].replace(/\/$/, '')
 
     let body: any = {}
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
@@ -240,7 +227,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    return res.status(404).json({ error: 'Not found', url: rawUrl })
+    return res.status(404).json({ error: 'Not found' })
   } catch (err: any) {
     console.error('API Error:', err?.message || err)
     return res.status(500).json({ error: err?.message || 'Internal server error' })

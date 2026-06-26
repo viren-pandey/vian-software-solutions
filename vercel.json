@@ -3,6 +3,7 @@
   "outputDirectory": ".",
   "installCommand": "npm install",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/handler" },
     { "source": "/", "destination": "/index.html" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/services", "destination": "/services.html" },
