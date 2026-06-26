@@ -314,6 +314,20 @@ async function showQuotations(main) {
       const q = await api('/api/quotations/' + id)
       const msgs = q.messages || []
       const msgHtml = msgs.map(m => `<div style="margin-bottom:12px;padding:10px 14px;background:${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:${m.senderId === user.id ? 'auto' : '0'}"><div style="font-size:11px;opacity:0.7;margin-bottom:4px">${esc(m.sender.name)} &middot; ${new Date(m.createdAt).toLocaleString()}</div>${esc(m.body)}</div>`).join('') || '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet. Start the conversation below.</p>'
+      const atts = q.attachments || []
+      const attHtml = atts.length > 0 ? `
+        <div style="margin-bottom:16px">
+          <h3 style="margin-bottom:8px">Attachments (${atts.length})</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${atts.map(a => {
+              const isImg = a.mimeType?.startsWith('image/')
+              return isImg
+                ? `<a href="${esc(a.fileUrl)}" target="_blank" style="display:block;width:100px;height:80px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--surface-hover)"><img src="${esc(a.fileUrl)}" alt="${esc(a.fileName)}" style="width:100%;height:100%;object-fit:cover"></a>`
+                : `<a href="${esc(a.fileUrl)}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-hover);font-size:12px;color:var(--text-secondary);text-decoration:none"><span>&#128206;</span>${esc(a.fileName)}</a>`
+            }).join('')}
+          </div>
+        </div>
+      ` : ''
       main.innerHTML = `
         <div class="dash-header">
           <div>
@@ -322,6 +336,7 @@ async function showQuotations(main) {
           </div>
           <button class="btn btn-secondary" onclick="loadPage('quotations')">Back</button>
         </div>
+        ${attHtml}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
           ${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
           ${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
@@ -410,17 +425,49 @@ async function showQuotations(main) {
           <label>Notes (optional)</label>
           <textarea id="notes" rows="2" placeholder="Any additional information"></textarea>
         </div>
+        <div class="form-group">
+          <label>Attachments (optional)</label>
+          <input type="file" id="attachmentFiles" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip" style="padding:8px;font-size:13px">
+          <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">Max 5 files, 5MB each. Supported: images, PDF, DOC, TXT, ZIP</div>
+          <div id="filePreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
         <div class="quick-actions">
           <button type="submit" class="btn btn-primary">Submit Request</button>
           <button type="button" class="btn btn-secondary" onclick="loadPage('quotations')">Cancel</button>
         </div>
       </form>
     `
+    document.getElementById('attachmentFiles').addEventListener('change', function() {
+      const preview = document.getElementById('filePreview')
+      preview.innerHTML = ''
+      const maxFiles = 5
+      const maxSize = 5 * 1024 * 1024
+      const files = Array.from(this.files).slice(0, maxFiles)
+      files.forEach(f => {
+        if (f.size > maxSize) { showToast(f.name + ' exceeds 5MB limit'); return }
+        const chip = document.createElement('span')
+        chip.style.cssText = 'padding:4px 10px;background:var(--surface-hover);border:1px solid var(--border);border-radius:999px;font-size:12px'
+        chip.textContent = f.name + ' (' + (f.size / 1024).toFixed(0) + 'KB)'
+        preview.appendChild(chip)
+      })
+    })
     document.getElementById('quoteForm').addEventListener('submit', async (e) => {
       e.preventDefault()
       const btn = e.target.querySelector('button[type="submit"]')
       btn.disabled = true; btn.textContent = 'Submitting...'
       try {
+        const fileInput = document.getElementById('attachmentFiles')
+        const files = Array.from(fileInput.files).slice(0, 5)
+        const attachments = []
+        for (const f of files) {
+          if (f.size > 5 * 1024 * 1024) continue
+          const b64 = await new Promise((resolve) => {
+            const r = new FileReader()
+            r.onload = () => resolve(r.result.split(',')[1])
+            r.readAsDataURL(f)
+          })
+          attachments.push({ name: f.name, type: f.type, size: f.size, data: b64 })
+        }
         await api('/api/quotations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -434,6 +481,7 @@ async function showQuotations(main) {
             preferredTechnologies: document.getElementById('preferredTechnologies').value.split(',').map((s) => s.trim()).filter(Boolean),
             referenceLinks: document.getElementById('referenceLinks').value.split(',').map((s) => s.trim()).filter(Boolean),
             notes: document.getElementById('notes').value,
+            attachments,
           }),
         })
         showToast('Quotation submitted successfully!')
