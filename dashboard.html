@@ -112,6 +112,8 @@
 <script>
 let user = null
 let currentPage = 'dashboard'
+let userPollTimer = null
+let userLastUnread = 0
 
 async function api(path, opts = {}) {
   const controller = new AbortController()
@@ -614,6 +616,7 @@ function showToast(msg) {
 
     loadPage('dashboard')
     fetchNotifications()
+    startUserPolling()
   } catch {
     app.innerHTML = `
       <div class="auth-page">
@@ -635,8 +638,17 @@ async function fetchNotifications() {
       if (data.unread > 0) { badge.style.display = 'inline'; badge.textContent = data.unread > 99 ? '99+' : data.unread }
       else { badge.style.display = 'none' }
     }
+    if (data.unread > userLastUnread && userLastUnread > 0) {
+      loadPage(currentPage)
+    }
+    userLastUnread = data.unread
     window._notifications = data.notifications
   } catch {}
+}
+
+function startUserPolling() {
+  if (userPollTimer) clearInterval(userPollTimer)
+  userPollTimer = setInterval(fetchNotifications, 2000)
 }
 
 window.showNotifications = function() {

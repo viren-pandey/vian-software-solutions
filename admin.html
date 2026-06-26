@@ -104,6 +104,9 @@
 
 <script>
 let user = null
+let currentPage = 'dashboard'
+let adminPollTimer = null
+let adminLastUnread = 0
 
 async function api(path, opts = {}) {
   const controller = new AbortController()
@@ -132,6 +135,7 @@ function showToast(msg) {
 const STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'REVISION_REQUESTED', 'ACCEPTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED']
 
 async function loadPage(page) {
+  currentPage = page
   document.querySelectorAll('.admin-sidebar a[data-page]').forEach(a => a.classList.toggle('active', a.dataset.page === page))
   const main = document.querySelector('.admin-main')
   if (!main) return
@@ -444,8 +448,17 @@ async function fetchAdminNotifications() {
       if (data.unread > 0) { badge.style.display = 'inline'; badge.textContent = data.unread > 99 ? '99+' : data.unread }
       else { badge.style.display = 'none' }
     }
+    if (data.unread > adminLastUnread && adminLastUnread > 0) {
+      loadPage(currentPage)
+    }
+    adminLastUnread = data.unread
     window._adminNotifs = data.notifications
   } catch {}
+}
+
+function startAdminPolling() {
+  if (adminPollTimer) clearInterval(adminPollTimer)
+  adminPollTimer = setInterval(fetchAdminNotifications, 2000)
 }
 
 window.showAdminNotifications = function() {
@@ -501,6 +514,7 @@ function logout() {
 
     loadPage('dashboard')
     fetchAdminNotifications()
+    startAdminPolling()
   } catch {
     app.innerHTML = `
       <div class="auth-page">
