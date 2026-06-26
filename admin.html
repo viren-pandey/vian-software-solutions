@@ -62,6 +62,7 @@
     [data-theme="dark"] .badge-QUOTED { background: rgba(99,102,241,0.15); color: #A5B4FC; }
     [data-theme="dark"] .badge-ACCEPTED { background: rgba(52,211,153,0.15); color: #6EE7B7; }
     [data-theme="dark"] .badge-PAID { background: rgba(52,211,153,0.15); color: #6EE7B7; }
+    [data-theme="dark"] .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
     .dash-form { max-width: 500px; }
     .dash-form .form-group { margin-bottom: 14px; }
     .dash-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
@@ -440,19 +441,37 @@ async function showPayments(main) {
       </div>
     ` : `
       <table class="admin-table">
-        <thead><tr><th>Client</th><th>Transaction ID</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <thead><tr><th>Client</th><th>Transaction ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
         <tbody>${payments.map((p) => `
           <tr>
             <td>${esc(p.user?.name || 'Unknown')}</td>
             <td><strong>${esc(p.paytmTransactionId)}</strong></td>
             <td>₹${Number(p.amount).toLocaleString()}</td>
-            <td><span class="badge badge-${p.status}">${p.status}</span></td>
+            <td><span class="badge badge-${p.status}">${p.status === 'pending' ? 'Pending Verification' : p.status}</span></td>
             <td>${new Date(p.createdAt).toLocaleDateString()}</td>
+            <td>${p.status === 'pending' ? `
+              <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="verifyPayment('${p.id}','approve')">Verify</button>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="verifyPayment('${p.id}','reject')">Reject</button>
+            ` : '-'}</td>
           </tr>
         `).join('')}</tbody>
       </table>
     `}
   `
+}
+
+window.verifyPayment = async function(id, action) {
+  try {
+    await api('/api/admin/payments/' + id + '/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+    showToast(action === 'approve' ? 'Payment verified successfully' : 'Payment rejected')
+    loadPage('payments')
+  } catch (e) {
+    showToast(e.message)
+  }
 }
 
 async function fetchAdminNotifications() {

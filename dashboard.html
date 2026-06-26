@@ -64,6 +64,7 @@
     [data-theme="dark"] .badge-INVOICED { background: rgba(244,114,182,0.15); color: #F9A8D4; }
     [data-theme="dark"] .badge-PAID { background: rgba(52,211,153,0.15); color: #6EE7B7; }
     [data-theme="dark"] .badge-REJECTED { background: rgba(248,113,113,0.15); color: #FCA5A5; }
+    [data-theme="dark"] .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
     .dash-form { max-width: 600px; }
     .dash-form .form-group { margin-bottom: 16px; }
     .dash-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
@@ -157,7 +158,8 @@ async function showDashboard(main) {
   ])
   const active = quotations.filter((q) => !['REJECTED','CANCELLED'].includes(q.status))
   const activeProjects = projects.filter((p) => p.status === 'active')
-  const unpaidInvoices = invoices.filter(inv => inv.status === 'issued')
+  const unpaidInvoices = invoices.filter(inv => inv.status === 'issued' && !inv.payments?.some(p => p.status === 'pending'))
+  const pendingInvoices = invoices.filter(inv => inv.payments?.some(p => p.status === 'pending'))
 
   main.innerHTML = `
     <div class="dash-header">
@@ -166,6 +168,30 @@ async function showDashboard(main) {
         <p class="subtitle">Welcome back, ${user.name}</p>
       </div>
     </div>
+    ${pendingInvoices.length > 0 ? `
+      <div style="margin-bottom:24px">
+        <h3 style="margin-bottom:12px;color:#F59E0B">Verification Pending</h3>
+        ${pendingInvoices.map(inv => {
+          const pendingPay = inv.payments?.find(p => p.status === 'pending')
+          return `
+          <div style="border:2px solid #F59E0B;border-radius:var(--radius-lg);padding:20px;background:var(--surface);margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px">Invoice ${esc(inv.invoiceNumber)}</div>
+                <div style="font-size:18px;font-weight:700">${inv.quotation ? esc(inv.quotation.title) : 'Project Payment'}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:22px;font-weight:700;color:#F59E0B">₹${Number(inv.amount).toLocaleString('en-IN')}</div>
+                <span class="badge badge-pending" style="margin-top:4px">Verification Pending</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:13px;color:var(--text-tertiary)">
+              Payment submitted. Awaiting admin verification.
+            </div>
+          </div>
+        `}).join('')}
+      </div>
+    ` : ''}
     ${unpaidInvoices.length > 0 ? `
       <div style="margin-bottom:24px">
         <h3 style="margin-bottom:12px;color:var(--accent)">Pending Payments</h3>
@@ -263,9 +289,21 @@ window.showPaymentBreakdown = async function(invoiceId) {
           <span style="font-weight:700;color:var(--accent)">₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
         </div>
       </div>
-      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:700" onclick="payInvoice(event,'${inv.id}')">
-        Pay ₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})} via Paytm
-      </button>
+      ${inv.payments?.some(p => p.status === 'pending') ? `
+        <div style="text-align:center;padding:16px;border:1px solid #F59E0B;border-radius:var(--radius-lg);background:rgba(245,158,11,0.08);margin-bottom:12px">
+          <strong style="color:#F59E0B">Payment Submitted</strong>
+          <p style="margin-top:4px;font-size:13px;color:var(--text-secondary)">Your payment is being verified by the admin. You'll be notified once confirmed.</p>
+        </div>
+      ` : inv.status === 'issued' ? `
+        <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:700" onclick="payInvoice(event,'${inv.id}')">
+          Pay ₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})} via Paytm
+        </button>
+      ` : inv.status === 'paid' ? `
+        <div style="text-align:center;padding:16px;border:1px solid var(--success);border-radius:var(--radius-lg);background:rgba(22,163,74,0.08)">
+          <strong style="color:var(--success)">Payment Completed</strong>
+          <p style="margin-top:4px;font-size:13px;color:var(--text-secondary)">This invoice has been paid successfully.</p>
+        </div>
+      ` : ''}
     `
   } catch (e) {
     main.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message) + '</p></div>'
@@ -540,16 +578,20 @@ async function showInvoices(main) {
     ` : `
       <table class="dash-table">
         <thead><tr><th>Invoice #</th><th>Project</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
-        <tbody>${invoices.map((inv) => `
+        <tbody>${invoices.map((inv) => {
+          const hasPendingPay = inv.payments?.some(p => p.status === 'pending')
+          const displayStatus = hasPendingPay ? 'Pending Verification' : inv.status
+          const statusClass = hasPendingPay ? 'pending' : inv.status
+          return `
           <tr>
             <td><strong>${esc(inv.invoiceNumber)}</strong></td>
             <td>${inv.quotation ? esc(inv.quotation.title) : '-'}</td>
             <td>₹${Number(inv.amount).toLocaleString()}</td>
-            <td><span class="badge badge-${inv.status}">${inv.status}</span></td>
+            <td><span class="badge badge-${statusClass}">${displayStatus}</span></td>
             <td>${new Date(inv.issuedAt).toLocaleDateString()}</td>
-            <td>${inv.status === 'issued' ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : ''}</td>
+            <td>${inv.status === 'issued' && !hasPendingPay ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : hasPendingPay ? '<span style="font-size:12px;color:var(--text-tertiary)">Awaiting verification</span>' : ''}</td>
           </tr>
-        `).join('')}</tbody>
+        `}).join('')}</tbody>
       </table>
     `}
   `

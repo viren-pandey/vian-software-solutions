@@ -601,24 +601,50 @@ export default async function handler(req: any, res: any) {
       if (payment.status === 'success') return res.json({ ok: true })
 
       if (status === 'TXN_SUCCESS') {
-        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'success' } })
-        await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
-        const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
-        if (invoice) {
-          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
-          await createNotification(payment.userId, 'payment_success', {
-            paymentId: payment.id, invoiceId: payment.invoiceId,
-            message: `Payment of ₹${Number(payment.amount).toLocaleString()} for invoice ${invoice.invoiceNumber} was successful.`,
-          })
-          await notifyAdmins('payment_received', {
-            paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
-            message: `Payment of ₹${Number(payment.amount).toLocaleString()} received for invoice ${invoice.invoiceNumber}.`,
-          })
-        }
+        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'pending' } })
+        await notifyAdmins('payment_verification', {
+          paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
+          message: `Payment of ₹${Number(payment.amount).toLocaleString()} needs your verification.`,
+        })
+        await createNotification(payment.userId, 'payment_pending', {
+          paymentId: payment.id, invoiceId: payment.invoiceId,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} is being verified. We'll notify you once confirmed.`,
+        })
       } else if (status === 'TXN_FAILURE') {
         await prisma.payment.update({ where: { id: payment.id }, data: { status: 'failed' } })
       }
 
+      return res.json({ ok: true })
+    }
+
+    // --- Admin: Verify Payment ---
+    const adminPaymentVerifyMatch = path.match(/^\/api\/admin\/payments\/([^/]+)\/verify$/)
+    if (adminPaymentVerifyMatch && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const paymentId = adminPaymentVerifyMatch[1]
+      const { action } = body
+      if (!action || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Invalid action. Use "approve" or "reject".' })
+      const payment = await prisma.payment.findUnique({ where: { id: paymentId } })
+      if (!payment) return res.status(404).json({ error: 'Payment not found' })
+      if (payment.status !== 'pending') return res.status(400).json({ error: 'Payment is not in pending state' })
+      if (action === 'approve') {
+        await prisma.payment.update({ where: { id: paymentId }, data: { status: 'success' } })
+        await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
+        const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
+        if (invoice) {
+          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+          await createNotification(payment.userId, 'payment_verified', {
+            paymentId, invoiceId: payment.invoiceId,
+            message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been verified and confirmed.`,
+          })
+        }
+      } else {
+        await prisma.payment.update({ where: { id: paymentId }, data: { status: 'failed' } })
+        await createNotification(payment.userId, 'payment_rejected', {
+          paymentId, invoiceId: payment.invoiceId,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} could not be verified. Please contact support.`,
+        })
+      }
       return res.json({ ok: true })
     }
 
