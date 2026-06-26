@@ -1,11 +1,8 @@
 {
   "buildCommand": "npx prisma generate",
+  "outputDirectory": ".",
   "installCommand": "npm install",
-  "functions": {
-    "api/*.ts": { "runtime": "@vercel/node@3" }
-  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/", "destination": "/index.html" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/services", "destination": "/services.html" },

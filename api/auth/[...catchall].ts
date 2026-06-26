@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ status: 'ok', timestamp: new Date().toISOString() })
     }
 
-    if (path === '/api/auth/register' && req.method === 'POST') {
+    if ((path === '/api/auth/register' || path === '/api/auth/register/') && req.method === 'POST') {
       const { email, password, name } = req.body
       if (!email || !password || !name) return res.status(400).json({ error: 'Email, password, and name are required' })
       const existing = await prisma.user.findUnique({ where: { email } })
@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json({ user: { id: user.id, email: user.email, name: user.name } })
     }
 
-    if (path === '/api/auth/login' && req.method === 'POST') {
+    if ((path === '/api/auth/login' || path === '/api/auth/login/') && req.method === 'POST') {
       const { email, password } = req.body
       if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
       const user = await prisma.user.findUnique({ where: { email }, include: { roles: true } })
