@@ -106,10 +106,16 @@
 let user = null
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { credentials: 'include', ...opts })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  try {
+    const res = await fetch(path, { credentials: 'include', signal: controller.signal, ...opts })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Request failed')
+    return data
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function esc(s) {
@@ -226,39 +232,34 @@ window.showAdminQuotationDetail = async function(id) {
   main.innerHTML = '<div class="loading-state">Loading...</div>'
   try {
     const q = await api('/api/admin/quotations/' + id)
-    main.innerHTML = \`
+    const msgs = q.messages || []
+    const msgHtml = msgs.map(m => `<div style="margin-bottom:12px;padding:10px 14px;background:${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:${m.senderId === user.id ? 'auto' : '0'}"><div style="font-size:11px;opacity:0.7;margin-bottom:4px">${esc(m.sender.name)} &middot; ${new Date(m.createdAt).toLocaleString()}</div>${esc(m.body)}</div>`).join('') || '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet.</p>'
+    main.innerHTML = `
       <div class="admin-header">
         <div>
-          <h1>\${esc(q.title)}</h1>
-          <p class="subtitle">\${q.user ? esc(q.user.name) + ' (' + esc(q.user.email) + ')' : ''} &middot; \${q.service ? esc(q.service.name) : ''} &middot; <span class="badge badge-\${q.status}">\${q.status.replace(/_/g, ' ')}</span></p>
+          <h1>${esc(q.title)}</h1>
+          <p class="subtitle">${q.user ? esc(q.user.name) + ' (' + esc(q.user.email) + ')' : ''} &middot; ${q.service ? esc(q.service.name) : ''} &middot; <span class="badge badge-${q.status}">${q.status.replace(/_/g, ' ')}</span></p>
         </div>
         <button class="btn btn-secondary" onclick="loadPage('quotations')">Back</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
-        \${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
-        \${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
-        \${q.budgetRange ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Budget Range</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.budgetRange) + '</p></div>' : ''}
-        \${q.timeline ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Timeline</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.timeline) + '</p></div>' : ''}
-        \${q.preferredTechnologies?.length ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Technologies</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.preferredTechnologies.join(', ')) + '</p></div>' : ''}
-        \${q.quotedAmount ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Quoted Amount</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">₹' + Number(q.quotedAmount).toLocaleString() + '</p></div>' : ''}
+        ${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
+        ${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
+        ${q.budgetRange ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Budget Range</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.budgetRange) + '</p></div>' : ''}
+        ${q.timeline ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Timeline</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.timeline) + '</p></div>' : ''}
+        ${q.preferredTechnologies?.length ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Technologies</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.preferredTechnologies.join(', ')) + '</p></div>' : ''}
+        ${q.quotedAmount ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Quoted Amount</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">₹' + Number(q.quotedAmount).toLocaleString() + '</p></div>' : ''}
       </div>
       <div style="margin-bottom:16px">
-        <button class="btn btn-primary" onclick="editQuotation('\${q.id}','\${q.status}','\${q.quotedAmount || ''}','\${q.quoteValidityDays || '15'}')">Edit Status</button>
+        <button class="btn btn-primary" onclick="editQuotation('${q.id}','${q.status}','${q.quotedAmount || ''}','${q.quoteValidityDays || '15'}')">Edit Status</button>
       </div>
       <h3 style="margin-bottom:12px">Discussion</h3>
-      <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;max-height:400px;overflow-y:auto" id="adminMsgThread">
-        \${q.messages && q.messages.length > 0 ? q.messages.map(m => \`
-          <div style="margin-bottom:12px;padding:10px 14px;background:\${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:\${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:\${m.senderId === user.id ? 'auto' : '0'}">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:4px">\${esc(m.sender.name)} &middot; \${new Date(m.createdAt).toLocaleString()}</div>
-            \${esc(m.body)}
-          </div>
-        \`).join('') : '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet.</p>'}
-      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;max-height:400px;overflow-y:auto" id="adminMsgThread">${msgHtml}</div>
       <form id="adminMsgForm" style="display:flex;gap:8px">
         <input type="text" id="adminMsgBody" placeholder="Type your reply..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text)">
         <button type="submit" class="btn btn-primary">Send</button>
       </form>
-    \`
+    `
     document.getElementById('adminMsgForm').addEventListener('submit', async function(e) {
       e.preventDefault()
       const input = document.getElementById('adminMsgBody')
@@ -450,29 +451,11 @@ async function fetchAdminNotifications() {
 window.showAdminNotifications = function() {
   const main = document.querySelector('.admin-main')
   const notifs = window._adminNotifs || []
-  main.innerHTML = \`
-    <div class="admin-header">
-      <div>
-        <h1>Notifications</h1>
-        <p class="subtitle">Stay updated</p>
-      </div>
-    </div>
-    \${notifs.length === 0 ? \`
-      <div class="empty-state" style="text-align:center;padding:64px;border:1px dashed var(--border);border-radius:var(--radius-lg)">
-        <h3>No notifications</h3>
-      </div>
-    \` : \`
-      <div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-        \${notifs.map(n => \`
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border-light);background:\${n.readAt ? 'transparent' : 'var(--surface-hover)'}">
-            <div style="font-size:13px;font-weight:\${n.readAt ? '400' : '600'}">\${esc(n.payload?.message || n.type)}</div>
-            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">\${new Date(n.createdAt).toLocaleString()}</div>
-          </div>
-        \`).join('')}
-      </div>
-      <button class="btn btn-secondary" style="margin-top:16px" onclick="markAdminNotifRead()">Mark all as read</button>
-    \`}
-  \`
+  if (notifs.length === 0) {
+    main.innerHTML = '<div class="admin-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated</p></div></div><div class="empty-state" style="text-align:center;padding:64px;border:1px dashed var(--border);border-radius:var(--radius-lg)"><h3>No notifications</h3></div>'
+  } else {
+    main.innerHTML = '<div class="admin-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated</p></div></div><div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">' + notifs.map(n => '<div style="padding:14px 18px;border-bottom:1px solid var(--border-light);background:' + (n.readAt ? 'transparent' : 'var(--surface-hover)') + '"><div style="font-size:13px;font-weight:' + (n.readAt ? '400' : '600') + '">' + esc(n.payload?.message || n.type) + '</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">' + new Date(n.createdAt).toLocaleString() + '</div></div>').join('') + '</div><button class="btn btn-secondary" style="margin-top:16px" onclick="markAdminNotifRead()">Mark all as read</button>'
+  }
   if (notifs.length > 0) markAdminNotifRead()
 }
 
@@ -488,7 +471,10 @@ function logout() {
   const app = document.getElementById('app')
 
   try {
-    const res = await fetch('/api/auth/me', { credentials: 'include' })
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 10000)
+    const res = await fetch('/api/auth/me', { credentials: 'include', signal: ctrl.signal })
+    clearTimeout(to)
     if (!res.ok) throw new Error('not authenticated')
     const data = await res.json()
     user = data.user

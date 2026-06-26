@@ -114,10 +114,16 @@ let user = null
 let currentPage = 'dashboard'
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { credentials: 'include', ...opts })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Request failed')
-  return data
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  try {
+    const res = await fetch(path, { credentials: 'include', signal: controller.signal, ...opts })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Request failed')
+    return data
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function loadPage(page) {
@@ -227,36 +233,31 @@ async function showQuotations(main) {
     main.innerHTML = '<div class="loading-state">Loading...</div>'
     try {
       const q = await api('/api/quotations/' + id)
-      main.innerHTML = \`
+      const msgs = q.messages || []
+      const msgHtml = msgs.map(m => `<div style="margin-bottom:12px;padding:10px 14px;background:${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:${m.senderId === user.id ? 'auto' : '0'}"><div style="font-size:11px;opacity:0.7;margin-bottom:4px">${esc(m.sender.name)} &middot; ${new Date(m.createdAt).toLocaleString()}</div>${esc(m.body)}</div>`).join('') || '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet. Start the conversation below.</p>'
+      main.innerHTML = `
         <div class="dash-header">
           <div>
-            <h1>\${esc(q.title)}</h1>
-            <p class="subtitle">\${q.service ? esc(q.service.name) : ''} &middot; <span class="badge badge-\${q.status}">\${q.status.replace(/_/g, ' ')}</span></p>
+            <h1>${esc(q.title)}</h1>
+            <p class="subtitle">${q.service ? esc(q.service.name) : ''} &middot; <span class="badge badge-${q.status}">${q.status.replace(/_/g, ' ')}</span></p>
           </div>
           <button class="btn btn-secondary" onclick="loadPage('quotations')">Back</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
-          \${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
-          \${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
-          \${q.budgetRange ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Budget Range</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.budgetRange) + '</p></div>' : ''}
-          \${q.timeline ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Timeline</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.timeline) + '</p></div>' : ''}
-          \${q.preferredTechnologies?.length ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Technologies</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.preferredTechnologies.join(', ')) + '</p></div>' : ''}
-          \${q.quotedAmount ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Quoted Amount</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">₹' + Number(q.quotedAmount).toLocaleString() + '</p></div>' : ''}
+          ${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
+          ${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
+          ${q.budgetRange ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Budget Range</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.budgetRange) + '</p></div>' : ''}
+          ${q.timeline ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Timeline</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.timeline) + '</p></div>' : ''}
+          ${q.preferredTechnologies?.length ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Technologies</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.preferredTechnologies.join(', ')) + '</p></div>' : ''}
+          ${q.quotedAmount ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Quoted Amount</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">₹' + Number(q.quotedAmount).toLocaleString() + '</p></div>' : ''}
         </div>
         <h3 style="margin-bottom:12px">Discussion</h3>
-        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;max-height:400px;overflow-y:auto" id="msgThread">
-          \${q.messages && q.messages.length > 0 ? q.messages.map(m => \`
-            <div style="margin-bottom:12px;padding:10px 14px;background:\${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:\${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:\${m.senderId === user.id ? 'auto' : '0'}">
-              <div style="font-size:11px;opacity:0.7;margin-bottom:4px">\${esc(m.sender.name)} &middot; \${new Date(m.createdAt).toLocaleString()}</div>
-              \${esc(m.body)}
-            </div>
-          \`).join('') : '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet. Start the conversation below.</p>'}
-        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;max-height:400px;overflow-y:auto" id="msgThread">${msgHtml}</div>
         <form id="msgForm" style="display:flex;gap:8px">
           <input type="text" id="msgBody" placeholder="Type your message..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text)">
           <button type="submit" class="btn btn-primary">Send</button>
         </form>
-      \`
+      `
       document.getElementById('msgForm').addEventListener('submit', async function(e) {
         e.preventDefault()
         const input = document.getElementById('msgBody')
@@ -584,7 +585,10 @@ function showToast(msg) {
   const app = document.getElementById('app')
 
   try {
-    const res = await fetch('/api/auth/me', { credentials: 'include' })
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 10000)
+    const res = await fetch('/api/auth/me', { credentials: 'include', signal: ctrl.signal })
+    clearTimeout(to)
     if (!res.ok) throw new Error('not authenticated')
     const data = await res.json()
     user = data.user
@@ -638,30 +642,11 @@ async function fetchNotifications() {
 window.showNotifications = function() {
   const main = document.querySelector('.dash-main')
   const notifs = window._notifications || []
-  main.innerHTML = \`
-    <div class="dash-header">
-      <div>
-        <h1>Notifications</h1>
-        <p class="subtitle">Stay updated on your quotations, invoices, and payments</p>
-      </div>
-    </div>
-    \${notifs.length === 0 ? \`
-      <div class="empty-state">
-        <h3>No notifications</h3>
-        <p>You're all caught up!</p>
-      </div>
-    \` : \`
-      <div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-        \${notifs.map(n => \`
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border-light);background:\${n.readAt ? 'transparent' : 'var(--surface-hover)'}">
-            <div style="font-size:13px;font-weight:\${n.readAt ? '400' : '600'}">\${esc(n.payload?.message || n.type)}</div>
-            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">\${new Date(n.createdAt).toLocaleString()}</div>
-          </div>
-        \`).join('')}
-      </div>
-      <button class="btn btn-secondary" style="margin-top:16px" onclick="markNotifRead()">Mark all as read</button>
-    \`}
-  \`
+  if (notifs.length === 0) {
+    main.innerHTML = '<div class="dash-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated on your quotations, invoices, and payments</p></div></div><div class="empty-state"><h3>No notifications</h3><p>You\'re all caught up!</p></div>'
+  } else {
+    main.innerHTML = '<div class="dash-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated on your quotations, invoices, and payments</p></div></div><div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">' + notifs.map(n => '<div style="padding:14px 18px;border-bottom:1px solid var(--border-light);background:' + (n.readAt ? 'transparent' : 'var(--surface-hover)') + '"><div style="font-size:13px;font-weight:' + (n.readAt ? '400' : '600') + '">' + esc(n.payload?.message || n.type) + '</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">' + new Date(n.createdAt).toLocaleString() + '</div></div>').join('') + '</div><button class="btn btn-secondary" style="margin-top:16px" onclick="markNotifRead()">Mark all as read</button>'
+  }
   if (notifs.length > 0) markNotifRead()
 }
 
