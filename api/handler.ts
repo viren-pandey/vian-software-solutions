@@ -75,10 +75,11 @@ function parseCookies(req: any): Record<string, string> {
 }
 
 function setCookies(res: any, cookies: { name: string; value: string; maxAge: number }[]) {
+  const secure = process.env.NODE_ENV === 'production'
   res.setHeader(
     'Set-Cookie',
     cookies.map(({ name, value, maxAge }) =>
-      `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`
+      `${name}=${value}; Path=/; HttpOnly;${secure ? ' Secure;' : ''} SameSite=Strict; Max-Age=${maxAge}`
     )
   )
 }
@@ -247,12 +248,36 @@ export default async function handler(req: any, res: any) {
       return res.json({ user })
     }
 
-    if (path === '/api/auth/logout' && req.method === 'POST') {
+    if (path === '/api/auth/logout' && (req.method === 'POST' || req.method === 'GET')) {
       setCookies(res, [
         { name: 'access_token', value: '', maxAge: 0 },
         { name: 'refresh_token', value: '', maxAge: 0 },
       ])
+      if (req.method === 'GET') {
+        res.writeHead(302, { Location: '/login' })
+        return res.end()
+      }
       return res.json({ ok: true })
+    }
+
+    if (path === '/api/auth/refresh' && req.method === 'POST') {
+      const refreshToken = cookies.refresh_token
+      if (!refreshToken) return res.status(401).json({ error: 'No refresh token' })
+      try {
+        const payload = jwt.verify(refreshToken, REFRESH_SECRET) as any
+        const u = await prisma.user.findUnique({ where: { id: payload.userId }, include: { roles: true } })
+        if (!u) return res.status(401).json({ error: 'User not found' })
+        const role = u.roles[0]?.role || 'client'
+        const newAccess = jwt.sign({ userId: u.id, role }, ACCESS_SECRET, { expiresIn: '15m' })
+        const newRefresh = jwt.sign({ userId: u.id, role }, REFRESH_SECRET, { expiresIn: '7d' })
+        setCookies(res, [
+          { name: 'access_token', value: newAccess, maxAge: 900 },
+          { name: 'refresh_token', value: newRefresh, maxAge: 604800 },
+        ])
+        return res.json({ user: { id: u.id, email: u.email, name: u.name, role } })
+      } catch {
+        return res.status(401).json({ error: 'Invalid refresh token' })
+      }
     }
 
     // --- Client Quotations ---

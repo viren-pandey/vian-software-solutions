@@ -10,7 +10,12 @@ const app = express()
 const prisma = new PrismaClient()
 
 app.use(helmet({ contentSecurityPolicy: false }))
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }))
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.CLIENT_URL,
+].filter(Boolean) as string[]
+app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json({ limit: '10mb' }))
 app.use(cookieParser())
 
@@ -58,8 +63,9 @@ app.post('/api/auth/register', async (req, res) => {
       include: { roles: true }
     })
     const tokens = generateTokens(user.id, user.email, user.roles[0].role)
-    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: 15 * 60 * 1000 })
-    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    const secure = process.env.NODE_ENV === 'production'
+    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure, sameSite: 'strict', maxAge: 15 * 60 * 1000 })
+    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure, sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
     res.status(201).json({ user: { id: user.id, email: user.email, name: user.name, role: user.roles[0].role } })
   } catch (err) {
     console.error('Register error:', err)
@@ -76,8 +82,9 @@ app.post('/api/auth/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) return res.status(401).json({ error: 'Invalid email or password' })
     const tokens = generateTokens(user.id, user.email, user.roles[0].role)
-    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: 15 * 60 * 1000 })
-    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    const secure = process.env.NODE_ENV === 'production'
+    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure, sameSite: 'strict', maxAge: 15 * 60 * 1000 })
+    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure, sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
     res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.roles[0].role } })
   } catch (err) {
     console.error('Login error:', err)
@@ -85,10 +92,29 @@ app.post('/api/auth/login', async (req, res) => {
   }
 })
 
-app.post('/api/auth/logout', (_req, res) => {
+app.all('/api/auth/logout', (_req, res) => {
   res.clearCookie('access_token')
   res.clearCookie('refresh_token')
+  if (_req.method === 'GET') {
+    return res.redirect(302, '/login')
+  }
   res.json({ ok: true })
+})
+
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refresh_token
+    if (!refreshToken) return res.status(401).json({ error: 'No refresh token' })
+    const payload = jwt.verify(refreshToken, REFRESH_SECRET) as { userId: string; email: string; role: string }
+    const user = await prisma.user.findUnique({ where: { id: payload.userId }, include: { roles: true } })
+    if (!user) return res.status(401).json({ error: 'User not found' })
+    const tokens = generateTokens(user.id, user.email, user.roles[0].role)
+    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 15 * 60 * 1000 })
+    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.roles[0].role } })
+  } catch {
+    res.status(401).json({ error: 'Invalid refresh token' })
+  }
 })
 
 app.get('/api/auth/me', async (req, res) => {
