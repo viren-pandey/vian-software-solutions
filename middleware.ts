@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const ADMIN_ROUTES = ['/admin', '/admin/quotations', '/admin/users', '/admin/projects', '/admin/payments', '/admin/chats', '/admin/audit-log']
+const ADMIN_ROUTES = ['/admin', '/admin/quotations', '/admin/users', '/admin/projects', '/admin/payments', '/admin/chats', '/admin/audit-log', '/admin/blog']
 const DASHBOARD_ROUTES = ['/dashboard', '/dashboard/quotations', '/dashboard/invoices', '/dashboard/payments', '/dashboard/support']
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 

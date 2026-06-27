@@ -849,6 +849,102 @@ export default async function handler(req: any, res: any) {
       return res.json({ logs, total })
     }
 
+    // --- Public Blog Routes ---
+    if (path === '/api/blogs' && req.method === 'GET') {
+      const limit = Math.min(parseInt(req.query?.limit as string) || 20, 50)
+      const offset = parseInt(req.query?.offset as string) || 0
+      const posts = await prisma.blogPost.findMany({
+        where: { published: true },
+        orderBy: { publishedAt: 'desc' },
+        take: limit, skip: offset,
+        select: { id: true, title: true, slug: true, excerpt: true, category: true, tags: true, publishedAt: true },
+      })
+      const total = await prisma.blogPost.count({ where: { published: true } })
+      return res.json({ posts, total })
+    }
+
+    const blogSlugMatch = path.match(/^\/api\/blogs\/([^/]+)$/)
+    if (blogSlugMatch && req.method === 'GET') {
+      const post = await prisma.blogPost.findUnique({
+        where: { slug: blogSlugMatch[1], published: true },
+        include: { author: { select: { id: true, name: true } } },
+      })
+      if (!post) return res.status(404).json({ error: 'Blog post not found' })
+      return res.json(post)
+    }
+
+    // --- Admin Blog Routes ---
+    if (path === '/api/admin/blogs' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const posts = await prisma.blogPost.findMany({ orderBy: { createdAt: 'desc' } })
+      return res.json(posts)
+    }
+
+    if (path === '/api/admin/blogs' && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const { title, slug, excerpt, content, category, tags, published } = body
+      if (!title || !slug) return res.status(400).json({ error: 'Title and slug are required' })
+      const existing = await prisma.blogPost.findUnique({ where: { slug } })
+      if (existing) return res.status(409).json({ error: 'A post with this slug already exists' })
+      const post = await prisma.blogPost.create({
+        data: {
+          title, slug, excerpt, content, category,
+          tags: tags || [],
+          published: published || false,
+          authorId: user.id,
+          publishedAt: published ? new Date() : null,
+        },
+      })
+      await auditLog(user.id, 'blog:create', 'blog_post', post.id, null, { title, slug })
+      return res.status(201).json(post)
+    }
+
+    const blogIdMatch = path.match(/^\/api\/admin\/blogs\/([^/]+)$/)
+    if (blogIdMatch) {
+      const blogId = blogIdMatch[1]
+      if (!requireAdmin(user, res)) return
+
+      if (req.method === 'GET') {
+        const post = await prisma.blogPost.findUnique({ where: { id: blogId } })
+        if (!post) return res.status(404).json({ error: 'Blog post not found' })
+        return res.json(post)
+      }
+
+      if (req.method === 'PUT') {
+        const { title, slug, excerpt, content, category, tags, published } = body
+        const existing = await prisma.blogPost.findUnique({ where: { id: blogId } })
+        if (!existing) return res.status(404).json({ error: 'Blog post not found' })
+        if (slug && slug !== existing.slug) {
+          const slugConflict = await prisma.blogPost.findUnique({ where: { slug } })
+          if (slugConflict) return res.status(409).json({ error: 'A post with this slug already exists' })
+        }
+        const prev = { title: existing.title, slug: existing.slug, published: existing.published }
+        const post = await prisma.blogPost.update({
+          where: { id: blogId },
+          data: {
+            title: title ?? existing.title,
+            slug: slug ?? existing.slug,
+            excerpt: excerpt ?? existing.excerpt,
+            content: content ?? existing.content,
+            category: category ?? existing.category,
+            tags: tags ?? existing.tags,
+            published: published ?? existing.published,
+            publishedAt: published && !existing.publishedAt ? new Date() : existing.publishedAt,
+          },
+        })
+        await auditLog(user.id, 'blog:update', 'blog_post', blogId, prev, { title: post.title, slug: post.slug, published: post.published })
+        return res.json(post)
+      }
+
+      if (req.method === 'DELETE') {
+        const existing = await prisma.blogPost.findUnique({ where: { id: blogId } })
+        if (!existing) return res.status(404).json({ error: 'Blog post not found' })
+        await prisma.blogPost.delete({ where: { id: blogId } })
+        await auditLog(user.id, 'blog:delete', 'blog_post', blogId, { title: existing.title }, null)
+        return res.json({ ok: true })
+      }
+    }
+
     return res.status(404).json({ error: 'Not found' })
   } catch (err: any) {
     console.error('API Error:', err?.message || err)

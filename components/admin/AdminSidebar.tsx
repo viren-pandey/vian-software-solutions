@@ -8,6 +8,7 @@ const adminItems = [
   { label: 'Users', href: '/admin/users' },
   { label: 'Projects', href: '/admin/projects' },
   { label: 'Payments', href: '/admin/payments' },
+  { label: 'Blog', href: '/admin/blog' },
   { label: 'Chats', href: '/admin/chats' },
   { label: 'Audit Log', href: '/admin/audit-log' },
 ]

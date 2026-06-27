@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       { source: '/', destination: '/index.html' },
       { source: '/about', destination: '/about.html' },
-      { source: '/blog', destination: '/blog.html' },
+      // blog is now handled by App Router
       { source: '/careers', destination: '/careers.html' },
       { source: '/case-studies', destination: '/case-studies.html' },
       { source: '/contact', destination: '/contact.html' },
