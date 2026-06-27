@@ -10,3 +10,5 @@ nul
 __pycache__/
 .DS_Store
 Thumbs.db
+*.txt
+_temp.js
