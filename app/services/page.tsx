@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
 
 type CurrencyCode = 'USD' | 'INR' | 'EUR' | 'GBP' | 'AUD' | 'CAD'
 
@@ -147,18 +146,18 @@ export default function ServicesPage() {
     <>
       <header className="topbar">
         <nav className="nav">
-          <Link className="brand" href="/">Vian</Link>
+          <a className="brand" href="/">Vian</a>
           <div className="nav-links" data-nav-links>
-            <Link href="/">Home</Link>
-            <Link href="/about">About</Link>
-            <Link href="/services" className="active">Services</Link>
-            <Link href="/pricing">Pricing</Link>
-            <Link href="/contact">Contact</Link>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/services" className="active">Services</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/contact">Contact</a>
           </div>
           <div className="nav-actions">
             <button className="icon-btn menu-toggle" data-menu-toggle type="button" aria-label="Menu">{'\u2630'}</button>
-            <Link href="/login" className="btn btn-secondary">Sign In</Link>
-            <Link href="/register" className="btn btn-primary">Get Started</Link>
+            <a href="/login" className="btn btn-secondary">Sign In</a>
+            <a href="/register" className="btn btn-primary">Get Started</a>
           </div>
         </nav>
       </header>
@@ -167,7 +166,7 @@ export default function ServicesPage() {
         <section className="page-hero">
           <div className="container">
             <div className="breadcrumb">
-              <Link href="/">Home</Link>
+              <a href="/">Home</a>
               <span>/</span>
               <span>Services</span>
             </div>
@@ -275,9 +274,9 @@ export default function ServicesPage() {
 
                     <div className="product-actions">
                       {p.demoUrl && (
-                        <Link href={p.demoUrl} className="btn btn-secondary" target="_blank">
+                        <a href={p.demoUrl} className="btn btn-secondary" target="_blank">
                           Live Demo
-                        </Link>
+                        </a>
                       )}
                       <button
                         className="btn btn-primary"
@@ -324,8 +323,8 @@ export default function ServicesPage() {
               <h2>Need something custom?</h2>
               <p className="lead">Tell us what you need and we will build it for you.</p>
               <div className="hero-actions">
-                <Link className="btn btn-primary btn-lg" href="/contact">Get in Touch</Link>
-                <Link className="btn btn-secondary btn-lg" href="/portfolio">See Our Work</Link>
+                <a className="btn btn-primary btn-lg" href="/contact">Get in Touch</a>
+                <a className="btn btn-secondary btn-lg" href="/portfolio">See Our Work</a>
               </div>
             </div>
           </div>
@@ -352,12 +351,12 @@ export default function ServicesPage() {
               </p>
             )}
             <div className="hero-actions" style={{ marginTop: 24 }}>
-              <Link href={`/register`} className="btn btn-primary">
+              <a href={`/register`} className="btn btn-primary">
                 Create Account &amp; Buy
-              </Link>
-              <Link href={`/contact?product=${product.id}`} className="btn btn-secondary">
+              </a>
+              <a href={`/contact?product=${product.id}`} className="btn btn-secondary">
                 Contact Us
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -366,35 +365,35 @@ export default function ServicesPage() {
       <footer className="site-footer">
         <div className="container footer-grid">
           <div>
-            <Link className="brand" href="/">Vian</Link>
+            <a className="brand" href="/">Vian</a>
             <p style={{ marginTop: 12 }}>
               Software, web, automation, and digital growth services for modern organizations.
             </p>
           </div>
           <div>
             <h3>Company</h3>
-            <Link href="/about">About</Link>
-            <Link href="/portfolio">Portfolio</Link>
-            <Link href="/contact">Contact</Link>
-            <Link href="/pricing">Pricing</Link>
+            <a href="/about">About</a>
+            <a href="/portfolio">Portfolio</a>
+            <a href="/contact">Contact</a>
+            <a href="/pricing">Pricing</a>
           </div>
           <div>
             <h3>Services</h3>
-            <Link href="/services">Websites</Link>
-            <Link href="/services">Software</Link>
-            <Link href="/services">Digital Growth</Link>
-            <Link href="/support">Support</Link>
+            <a href="/services">Websites</a>
+            <a href="/services">Software</a>
+            <a href="/services">Digital Growth</a>
+            <a href="/support">Support</a>
           </div>
           <div>
             <h3>Resources</h3>
-            <Link href="/blog">Blog</Link>
-            <Link href="/faq">FAQ</Link>
+            <a href="/blog">Blog</a>
+            <a href="/faq">FAQ</a>
           </div>
           <div>
             <h3>Legal</h3>
-            <Link href="/privacy-policy">Privacy Policy</Link>
-            <Link href="/terms-and-conditions">Terms of Service</Link>
-            <Link href="/refund-policy">Refund Policy</Link>
+            <a href="/privacy-policy">Privacy Policy</a>
+            <a href="/terms-and-conditions">Terms of Service</a>
+            <a href="/refund-policy">Refund Policy</a>
           </div>
         </div>
         <div className="container footer-bottom">
