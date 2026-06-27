@@ -1,30 +1,4 @@
 {
-  "buildCommand": "npx prisma generate",
-  "outputDirectory": ".",
-  "installCommand": "npm install",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/handler" },
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/about", "destination": "/about.html" },
-    { "source": "/services", "destination": "/services.html" },
-    { "source": "/blog", "destination": "/blog.html" },
-    { "source": "/careers", "destination": "/careers.html" },
-    { "source": "/case-studies", "destination": "/case-studies.html" },
-    { "source": "/contact", "destination": "/contact.html" },
-    { "source": "/cookie-policy", "destination": "/cookie-policy.html" },
-    { "source": "/disclaimer", "destination": "/disclaimer.html" },
-    { "source": "/faq", "destination": "/faq.html" },
-    { "source": "/portfolio", "destination": "/portfolio.html" },
-    { "source": "/pricing", "destination": "/pricing.html" },
-    { "source": "/privacy-policy", "destination": "/privacy-policy.html" },
-    { "source": "/refund-policy", "destination": "/refund-policy.html" },
-    { "source": "/shipping-policy", "destination": "/shipping-policy.html" },
-    { "source": "/support", "destination": "/support.html" },
-    { "source": "/technologies", "destination": "/technologies.html" },
-    { "source": "/terms-and-conditions", "destination": "/terms-and-conditions.html" },
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/register", "destination": "/register.html" },
-    { "source": "/dashboard", "destination": "/dashboard.html" },
-    { "source": "/admin", "destination": "/admin.html" }
-  ]
+  "buildCommand": "npm run build",
+  "installCommand": "npm install"
 }

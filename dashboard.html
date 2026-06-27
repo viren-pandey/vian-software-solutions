@@ -252,8 +252,6 @@ window.showPaymentBreakdown = async function(invoiceId) {
   try {
     const inv = await api('/api/invoices/' + invoiceId)
     const total = Number(inv.amount)
-    const gst = Math.round(total * 18 / 118 * 100) / 100
-    const base = Math.round((total - gst) * 100) / 100
 
     main.innerHTML = `
       <div class="dash-header">
@@ -270,22 +268,14 @@ window.showPaymentBreakdown = async function(invoiceId) {
         </div>
       ` : ''}
       ${inv.quotation?.goals ? `
-        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;background:var(--surface)">
+        <div style="border:1px var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;background:var(--surface)">
           <strong>Goals</strong>
           <p style="margin-top:6px;color:var(--text-secondary);font-size:13px">${esc(inv.quotation.goals)}</p>
         </div>
       ` : ''}
       <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;background:var(--surface);margin-bottom:20px">
         <h3 style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-light)">Payment Breakdown</h3>
-        <div style="display:flex;justify-content:space-between;padding:8px 0">
-          <span style="color:var(--text-secondary)">Net Amount</span>
-          <span style="font-weight:600">₹${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0">
-          <span style="color:var(--text-secondary)">GST @ 18%</span>
-          <span style="font-weight:600">₹${gst.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border);font-size:18px">
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;border-top:2px solid var(--border);font-size:18px">
           <span style="font-weight:700">Total Amount</span>
           <span style="font-weight:700;color:var(--accent)">₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
         </div>
@@ -695,8 +685,11 @@ window.showInvoiceView = async function(invoiceId) {
   try {
     const inv = await api('/api/invoices/' + invoiceId)
     const total = Number(inv.amount)
-    const gst = Math.round(total * 18 / 118 * 100) / 100
-    const base = Math.round((total - gst) * 100) / 100
+    // TODO(GST): If/when Vian Software Solutions obtains GST registration,
+    // re-add GST line items here using the official GSTIN, applicable rate,
+    // and updated entity type. Do NOT re-use the old placeholder GSTIN
+    // (06ABCDE1234F1Z5) or the Pvt. Ltd. entity name — verify against
+    // actual registration documents at that time.
     const dueDate = new Date(inv.issuedAt)
     dueDate.setDate(dueDate.getDate() + (inv.quotation?.quoteValidityDays || 15))
     const statusLabel = inv.status === 'paid' ? 'PAID' : inv.payments?.some(p => p.status === 'pending') ? 'Payment Pending Verification' : 'UNPAID'
@@ -719,11 +712,9 @@ window.showInvoiceView = async function(invoiceId) {
             <div style="font-size:11px;font-weight:700;color:#1e3a5f;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Software Solutions</div>
           </div>
           <div style="text-align:right;font-size:11px;color:#374151;line-height:1.6">
-            <strong style="font-size:14px;color:#1e3a5f">TAX INVOICE</strong><br>
-            <span>Vian Software Solutions Pvt. Ltd.</span><br>
-            <span>123, Tech Park, Sector 21</span><br>
-            <span>Gurugram, Haryana - 122001</span><br>
-            <span>GSTIN: 06ABCDE1234F1Z5</span><br>
+            <strong style="font-size:14px;color:#1e3a5f">INVOICE</strong><br>
+            <span>Vian Software Solutions</span><br>
+            <span>(Sole Proprietorship of Viren Pandey)</span><br>
             <span>Email: finance@viannn.online</span>
           </div>
         </div>
@@ -749,7 +740,6 @@ window.showInvoiceView = async function(invoiceId) {
             <tr style="background:#1e3a5f;color:#fff">
               <th style="padding:10px 12px;text-align:left;font-weight:600">#</th>
               <th style="padding:10px 12px;text-align:left;font-weight:600">Description of Services</th>
-              <th style="padding:10px 12px;text-align:right;font-weight:600">HSN/SAC</th>
               <th style="padding:10px 12px;text-align:right;font-weight:600">Amount (₹)</th>
             </tr>
           </thead>
@@ -761,16 +751,13 @@ window.showInvoiceView = async function(invoiceId) {
                 ${inv.quotation?.description ? `<br><span style="color:#6b7280;font-size:11px">${esc(inv.quotation.description)}</span>` : ''}
                 ${inv.quotation?.goals ? `<br><span style="color:#6b7280;font-size:11px">Goals: ${esc(inv.quotation.goals)}</span>` : ''}
               </td>
-              <td style="padding:12px;text-align:right;vertical-align:top;color:#6b7280">9983</td>
-              <td style="padding:12px;text-align:right;vertical-align:top;font-weight:600;color:#111">${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+              <td style="padding:12px;text-align:right;vertical-align:top;font-weight:600;color:#111">${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             </tr>
           </tbody>
         </table>
 
         <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
           <table style="border-collapse:collapse;font-size:13px;min-width:280px">
-            <tr><td style="padding:6px 12px;color:#6b7280">Net Amount</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
-            <tr><td style="padding:6px 12px;color:#6b7280">IGST @ 18%</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${gst.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
             <tr style="border-top:2px solid #1e3a5f"><td style="padding:8px 12px;font-weight:900;color:#1e3a5f;font-size:15px">Total Amount</td><td style="padding:8px 12px;text-align:right;font-weight:900;color:#1e3a5f;font-size:15px">₹ ${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
           </table>
         </div>
@@ -784,12 +771,11 @@ window.showInvoiceView = async function(invoiceId) {
           <strong style="color:#374151">Terms & Conditions:</strong><br>
           1. Payment is due within ${inv.quotation?.quoteValidityDays || 15} days from the invoice date.<br>
           2. Late payment may incur additional charges at 2% per month.<br>
-          3. This invoice is subject to Gurugram jurisdiction.<br>
-          4. This is a computer-generated invoice and does not require a physical signature.
+          3. This is a computer-generated invoice and does not require a physical signature.
         </div>
 
         <div style="text-align:center;font-size:10px;color:#9ca3af;padding-top:16px;border-top:1px solid #e5e7eb">
-          <span style="font-weight:700;color:#1e3a5f">Vian Software Solutions</span> &bull; GSTIN: 06ABCDE1234F1Z5 &bull; Email: finance@viannn.online<br>
+          <span style="font-weight:700;color:#1e3a5f">Vian Software Solutions</span> &bull; Sole Proprietorship of Viren Pandey &bull; Email: finance@viannn.online<br>
           <span>Thank you for your business!</span>
         </div>
       </div>

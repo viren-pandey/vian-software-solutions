@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard | Vian Software Solutions</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <script defer src="js/theme.js"></script>
+  <script defer src="js/app.js"></script>
+  <style>
+    .dash-layout { display: flex; min-height: calc(100vh - var(--nav-height)); }
+    .dash-sidebar { width: 220px; border-right: 1px solid var(--border); padding: 24px; flex-shrink: 0; display: none; }
+    .dash-sidebar a { display: block; padding: 8px 12px; border-radius: var(--radius); font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-bottom: 2px; cursor: pointer; }
+    .dash-sidebar a:hover, .dash-sidebar a.active { background: var(--surface-hover); color: var(--text); }
+    .dash-main { flex: 1; padding: 32px; max-width: 900px; }
+    .dash-main h1 { font-size: 28px; margin-bottom: 4px; }
+    .dash-main .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .welcome-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; background: var(--surface); margin-bottom: 24px; }
+    .quick-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .empty-state { text-align: center; padding: 64px 24px; border: 1px dashed var(--border); border-radius: var(--radius-lg); }
+    .empty-state h3 { font-size: 18px; margin-bottom: 8px; }
+    .empty-state p { color: var(--text-secondary); font-size: 14px; margin-bottom: 20px; }
+    .loading-state { display: flex; align-items: center; justify-content: center; min-height: 400px; color: var(--text-secondary); }
+    .auth-page { min-height: calc(100vh - var(--nav-height)); display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .auth-card { text-align: center; }
+    .auth-card h2 { margin-bottom: 12px; }
+    .auth-card p { color: var(--text-secondary); margin-bottom: 20px; }
+    @media (min-width: 768px) { .dash-sidebar { display: block; } }
+    .dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dash-table th { text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .dash-table td { padding: 12px; border-bottom: 1px solid var(--border-light); }
+    .dash-table tr:hover td { background: var(--surface-hover); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-SUBMITTED { background: #DBEAFE; color: #1E40AF; }
+    .badge-UNDER_REVIEW { background: #FEF3C7; color: #92400E; }
+    .badge-QUOTED { background: #E0E7FF; color: #3730A3; }
+    .badge-ACCEPTED { background: #D1FAE5; color: #065F46; }
+    .badge-INVOICED { background: #FCE7F3; color: #9D174D; }
+    .badge-PAID { background: #A7F3D0; color: #065F46; }
+    .badge-REJECTED { background: #FEE2E2; color: #991B1B; }
+    .badge-CANCELLED { background: #F3F4F6; color: #4B5563; }
+    .badge-REVISION_REQUESTED { background: #FDE68A; color: #92400E; }
+    .badge-active { background: #D1FAE5; color: #065F46; }
+    .badge-paused { background: #FEF3C7; color: #92400E; }
+    .badge-completed { background: #DBEAFE; color: #1E40AF; }
+    .badge-cancelled { background: #FEE2E2; color: #991B1B; }
+    .badge-issued { background: #FCE7F3; color: #9D174D; }
+    .badge-paid { background: #D1FAE5; color: #065F46; }
+    .badge-void { background: #FEE2E2; color: #991B1B; }
+    .badge-pending { background: #FEF3C7; color: #92400E; }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-failed { background: #FEE2E2; color: #991B1B; }
+    .badge-refunded { background: #E0E7FF; color: #3730A3; }
+    .badge-open { background: #DBEAFE; color: #1E40AF; }
+    .badge-resolved { background: #D1FAE5; color: #065F46; }
+    .badge-closed { background: #F3F4F6; color: #4B5563; }
+    [data-theme="dark"] .badge-SUBMITTED { background: rgba(59,130,246,0.15); color: #93C5FD; }
+    [data-theme="dark"] .badge-UNDER_REVIEW { background: rgba(251,191,36,0.15); color: #FCD34D; }
+    [data-theme="dark"] .badge-QUOTED { background: rgba(99,102,241,0.15); color: #A5B4FC; }
+    [data-theme="dark"] .badge-ACCEPTED { background: rgba(52,211,153,0.15); color: #6EE7B7; }
+    [data-theme="dark"] .badge-INVOICED { background: rgba(244,114,182,0.15); color: #F9A8D4; }
+    [data-theme="dark"] .badge-PAID { background: rgba(52,211,153,0.15); color: #6EE7B7; }
+    [data-theme="dark"] .badge-REJECTED { background: rgba(248,113,113,0.15); color: #FCA5A5; }
+    [data-theme="dark"] .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
+    @media print { body * { visibility: hidden; } .invoice-print, .invoice-print * { visibility: visible; } .invoice-print { position: fixed; inset: 0; padding: 20px; background: #fff; color: #000; } .inv-no-print { display: none !important; } }
+    .dash-form { max-width: 600px; }
+    .dash-form .form-group { margin-bottom: 16px; }
+    .dash-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .dash-form input, .dash-form textarea, .dash-form select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; }
+    .dash-form input:focus, .dash-form textarea:focus, .dash-form select:focus { outline: none; border-color: var(--accent); }
+    .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; background: var(--surface); }
+    .stat-card .num { font-size: 24px; font-weight: 700; }
+    .stat-card .label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div class="site-loader" data-loader><div class="loader-ring"></div></div>
+
+<header class="topbar">
+  <nav class="nav">
+    <a class="brand" href="/">Vian</a>
+    <div class="nav-links" data-nav-links>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/services">Services</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/contact">Contact</a>
+    </div>
+    <div class="nav-actions">
+      <button class="icon-btn" data-theme-toggle type="button" aria-label="Toggle theme">&#x25D0;</button>
+      <a class="btn btn-secondary" href="/login">Sign In</a>
+      <a class="btn btn-primary" href="/register">Get Started</a>
+      <button class="icon-btn menu-toggle" data-menu-toggle type="button" aria-label="Menu">&#x2630;</button>
+    </div>
+  </nav>
+</header>
+
+<main id="app">
+  <div class="loading-state">Loading...</div>
+</main>
+
+<footer class="footer">
+  <div class="container footer-bottom">
+    <span>&copy; 2026 Vian Software Solutions. All rights reserved.</span>
+  </div>
+</footer>
+
+<div class="toast" data-toast></div>
+
+<script>
+let user = null
+let currentPage = 'dashboard'
+let userPollTimer = null
+let userLastUnread = 0
+
+async function api(path, opts = {}) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  try {
+    const res = await fetch(path, { credentials: 'include', signal: controller.signal, ...opts })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Request failed')
+    return data
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function loadPage(page) {
+  currentPage = page
+  document.querySelectorAll('.dash-sidebar a').forEach(a => a.classList.toggle('active', a.dataset.page === page))
+
+  const main = document.querySelector('.dash-main')
+  if (!main) return
+
+  main.innerHTML = '<div class="loading-state">Loading...</div>'
+
+  try {
+    if (page === 'dashboard') await showDashboard(main)
+    else if (page === 'quotations') await showQuotations(main)
+    else if (page === 'projects') await showProjects(main)
+    else if (page === 'invoices') await showInvoices(main)
+    else if (page === 'payments') await showPayments(main)
+    else if (page === 'support') await showSupport(main)
+  } catch (e) {
+    main.innerHTML = `<div class="empty-state"><h3>Error</h3><p>${e.message}</p></div>`
+  }
+}
+
+async function showDashboard(main) {
+  const [quotations, projects, invoices] = await Promise.all([
+    api('/api/quotations').catch(() => []),
+    api('/api/projects').catch(() => []),
+    api('/api/invoices').catch(() => []),
+  ])
+  const active = quotations.filter((q) => !['REJECTED','CANCELLED'].includes(q.status))
+  const activeProjects = projects.filter((p) => p.status === 'active')
+  const unpaidInvoices = invoices.filter(inv => inv.status === 'issued' && !inv.payments?.some(p => p.status === 'pending'))
+  const pendingInvoices = invoices.filter(inv => inv.payments?.some(p => p.status === 'pending'))
+
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle">Welcome back, ${user.name}</p>
+      </div>
+    </div>
+    ${pendingInvoices.length > 0 ? `
+      <div style="margin-bottom:24px">
+        <h3 style="margin-bottom:12px;color:#F59E0B">Verification Pending</h3>
+        ${pendingInvoices.map(inv => {
+          const pendingPay = inv.payments?.find(p => p.status === 'pending')
+          return `
+          <div style="border:2px solid #F59E0B;border-radius:var(--radius-lg);padding:20px;background:var(--surface);margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px">Invoice ${esc(inv.invoiceNumber)}</div>
+                <div style="font-size:18px;font-weight:700">${inv.quotation ? esc(inv.quotation.title) : 'Project Payment'}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:22px;font-weight:700;color:#F59E0B">₹${Number(inv.amount).toLocaleString('en-IN')}</div>
+                <span class="badge badge-pending" style="margin-top:4px">Verification Pending</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:13px;color:var(--text-tertiary)">
+              Payment submitted. Awaiting admin verification.
+            </div>
+          </div>
+        `}).join('')}
+      </div>
+    ` : ''}
+    ${unpaidInvoices.length > 0 ? `
+      <div style="margin-bottom:24px">
+        <h3 style="margin-bottom:12px;color:var(--accent)">Pending Payments</h3>
+        ${unpaidInvoices.map(inv => `
+          <div onclick="showPaymentBreakdown('${inv.id}')" style="cursor:pointer;border:2px solid var(--accent);border-radius:var(--radius-lg);padding:20px;background:linear-gradient(135deg,var(--surface),var(--surface-hover));margin-bottom:12px;transition:transform 0.15s" onmouseover="this.style.transform='scale(1.01)'" onmouseout="this.style.transform='scale(1)'">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px">Invoice ${esc(inv.invoiceNumber)}</div>
+                <div style="font-size:18px;font-weight:700">${inv.quotation ? esc(inv.quotation.title) : 'Project Payment'}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:22px;font-weight:700;color:var(--accent)">₹${Number(inv.amount).toLocaleString('en-IN')}</div>
+                <span class="badge badge-issued" style="margin-top:4px">Payment Required</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-light);font-size:13px;color:var(--text-secondary)">
+              Click to view detailed breakdown & pay →
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    <div class="stat-cards">
+      <div class="stat-card"><div class="num">${active.length}</div><div class="label">Active Quotations</div></div>
+      <div class="stat-card"><div class="num">${activeProjects.length}</div><div class="label">Active Projects</div></div>
+      <div class="stat-card"><div class="num">${quotations.filter((q) => q.status === 'PAID').length}</div><div class="label">Completed</div></div>
+    </div>
+    <div class="welcome-card">
+      <h2>Ready to start a project?</h2>
+      <p>Tell us about your requirements and we'll get back to you with a tailored quote within 1-2 business days.</p>
+      <div class="quick-actions">
+        <a class="btn btn-primary" href="#quotations" onclick="return loadPage('quotations')">Request a Quote</a>
+        <a class="btn btn-secondary" href="#support" onclick="return loadPage('support')">Contact Support</a>
+      </div>
+    </div>
+    ${quotations.length === 0 ? `
+      <div class="empty-state">
+        <h3>No quotations yet</h3>
+        <p>Request your first quote to get started.</p>
+        <a class="btn btn-primary" href="#quotations" onclick="return loadPage('quotations')">Request a Quote</a>
+      </div>
+    ` : `
+      <h3 style="margin-bottom:12px">Recent Quotations</h3>
+      <table class="dash-table">
+        <thead><tr><th>Title</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${quotations.slice(0, 5).map((q) => `
+          <tr><td>${esc(q.title)}</td><td><span class="badge badge-${q.status}">${q.status}</span></td><td>${new Date(q.createdAt).toLocaleDateString()}</td></tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+}
+
+window.showPaymentBreakdown = async function(invoiceId) {
+  const main = document.querySelector('.dash-main')
+  main.innerHTML = '<div class="loading-state">Loading...</div>'
+  try {
+    const inv = await api('/api/invoices/' + invoiceId)
+    const total = Number(inv.amount)
+    const gst = Math.round(total * 18 / 118 * 100) / 100
+    const base = Math.round((total - gst) * 100) / 100
+
+    main.innerHTML = `
+      <div class="dash-header">
+        <div>
+          <h1>${esc(inv.quotation?.title || 'Payment')}</h1>
+          <p class="subtitle">Invoice ${esc(inv.invoiceNumber)}</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadPage('dashboard')">Back</button>
+      </div>
+      ${inv.quotation?.description ? `
+        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;background:var(--surface)">
+          <strong>Project Description</strong>
+          <p style="margin-top:6px;color:var(--text-secondary);font-size:13px">${esc(inv.quotation.description)}</p>
+        </div>
+      ` : ''}
+      ${inv.quotation?.goals ? `
+        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:20px;background:var(--surface)">
+          <strong>Goals</strong>
+          <p style="margin-top:6px;color:var(--text-secondary);font-size:13px">${esc(inv.quotation.goals)}</p>
+        </div>
+      ` : ''}
+      <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;background:var(--surface);margin-bottom:20px">
+        <h3 style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-light)">Payment Breakdown</h3>
+        <div style="display:flex;justify-content:space-between;padding:8px 0">
+          <span style="color:var(--text-secondary)">Net Amount</span>
+          <span style="font-weight:600">₹${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0">
+          <span style="color:var(--text-secondary)">GST @ 18%</span>
+          <span style="font-weight:600">₹${gst.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border);font-size:18px">
+          <span style="font-weight:700">Total Amount</span>
+          <span style="font-weight:700;color:var(--accent)">₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
+        </div>
+      </div>
+      ${inv.payments?.some(p => p.status === 'pending') ? `
+        <div style="text-align:center;padding:16px;border:1px solid #F59E0B;border-radius:var(--radius-lg);background:rgba(245,158,11,0.08);margin-bottom:12px">
+          <strong style="color:#F59E0B">Payment Submitted</strong>
+          <p style="margin-top:4px;font-size:13px;color:var(--text-secondary)">Your payment is being verified by the admin. You'll be notified once confirmed.</p>
+        </div>
+      ` : inv.status === 'issued' ? `
+        <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:700" onclick="payInvoice(event,'${inv.id}')">
+          Pay ₹${total.toLocaleString('en-IN', {minimumFractionDigits:2})} via Paytm
+        </button>
+      ` : inv.status === 'paid' ? `
+        <div style="text-align:center;padding:16px;border:1px solid var(--success);border-radius:var(--radius-lg);background:rgba(22,163,74,0.08)">
+          <strong style="color:var(--success)">Payment Completed</strong>
+          <p style="margin-top:4px;font-size:13px;color:var(--text-secondary)">This invoice has been paid successfully.</p>
+        </div>
+      ` : ''}
+    `
+  } catch (e) {
+    main.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message) + '</p></div>'
+  }
+}
+
+async function showQuotations(main) {
+  const [quotations, services] = await Promise.all([
+    api('/api/quotations'),
+    api('/api/services'),
+  ])
+
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Quotations</h1>
+        <p class="subtitle">View and manage your quotation requests</p>
+      </div>
+      <button class="btn btn-primary" onclick="showQuoteForm()">New Request</button>
+    </div>
+    ${quotations.length === 0 ? `
+      <div class="empty-state">
+        <h3>No quotations yet</h3>
+        <p>Submit your first project requirement to get a quote.</p>
+      </div>
+    ` : `
+      <table class="dash-table">
+        <thead><tr><th>Title</th><th>Service</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${quotations.map((q) => `
+          <tr style="cursor:pointer" onclick="showQuotationDetail('${q.id}')">
+            <td><strong>${esc(q.title)}</strong></td>
+            <td>${q.service ? esc(q.service.name) : '-'}</td>
+            <td>${q.quotedAmount ? '₹' + q.quotedAmount : '-'}</td>
+            <td><span class="badge badge-${q.status}">${q.status.replace(/_/g, ' ')}</span></td>
+            <td>${new Date(q.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+
+  window.showQuotationDetail = async function(id) {
+    const main = document.querySelector('.dash-main')
+    main.innerHTML = '<div class="loading-state">Loading...</div>'
+    try {
+      const q = await api('/api/quotations/' + id)
+      const msgs = q.messages || []
+      const msgHtml = msgs.map(m => `<div style="margin-bottom:12px;padding:10px 14px;background:${m.senderId === user.id ? 'var(--accent)' : 'var(--surface-hover)'};color:${m.senderId === user.id ? '#fff' : 'var(--text)'};border-radius:var(--radius);max-width:80%;margin-left:${m.senderId === user.id ? 'auto' : '0'}"><div style="font-size:11px;opacity:0.7;margin-bottom:4px">${esc(m.sender.name)} &middot; ${new Date(m.createdAt).toLocaleString()}</div>${esc(m.body)}</div>`).join('') || '<p style="color:var(--text-secondary);text-align:center;padding:24px">No messages yet. Start the conversation below.</p>'
+      const atts = q.attachments || []
+      const attHtml = atts.length > 0 ? `
+        <div style="margin-bottom:16px">
+          <h3 style="margin-bottom:8px">Attachments (${atts.length})</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${atts.map(a => {
+              const isImg = a.mimeType?.startsWith('image/')
+              return isImg
+                ? `<a href="${esc(a.fileUrl)}" target="_blank" style="display:block;width:100px;height:80px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--surface-hover)"><img src="${esc(a.fileUrl)}" alt="${esc(a.fileName)}" style="width:100%;height:100%;object-fit:cover"></a>`
+                : `<a href="${esc(a.fileUrl)}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-hover);font-size:12px;color:var(--text-secondary);text-decoration:none"><span>&#128206;</span>${esc(a.fileName)}</a>`
+            }).join('')}
+          </div>
+        </div>
+      ` : ''
+      main.innerHTML = `
+        <div class="dash-header">
+          <div>
+            <h1>${esc(q.title)}</h1>
+            <p class="subtitle">${q.service ? esc(q.service.name) : ''} &middot; <span class="badge badge-${q.status}">${q.status.replace(/_/g, ' ')}</span></p>
+          </div>
+          <button class="btn btn-secondary" onclick="loadPage('quotations')">Back</button>
+        </div>
+        ${attHtml}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+          ${q.description ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Description</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.description) + '</p></div>' : ''}
+          ${q.goals ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Goals</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.goals) + '</p></div>' : ''}
+          ${q.budgetRange ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Budget Range</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.budgetRange) + '</p></div>' : ''}
+          ${q.timeline ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Timeline</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.timeline) + '</p></div>' : ''}
+          ${q.preferredTechnologies?.length ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Technologies</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">' + esc(q.preferredTechnologies.join(', ')) + '</p></div>' : ''}
+          ${q.quotedAmount ? '<div class="card" style="padding:16px;border:1px solid var(--border);border-radius:var(--radius-lg)"><strong>Quoted Amount</strong><p style="margin-top:6px;color:var(--text-secondary);font-size:13px">₹' + Number(q.quotedAmount).toLocaleString() + '</p></div>' : ''}
+        </div>
+        <h3 style="margin-bottom:12px">Discussion</h3>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;max-height:400px;overflow-y:auto" id="msgThread">${msgHtml}</div>
+        <form id="msgForm" style="display:flex;gap:8px">
+          <input type="text" id="msgBody" placeholder="Type your message..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text)">
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      `
+      document.getElementById('msgForm').addEventListener('submit', async function(e) {
+        e.preventDefault()
+        const input = document.getElementById('msgBody')
+        const body = input.value.trim()
+        if (!body) return
+        input.disabled = true
+        try {
+          await api('/api/quotations/' + id + '/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body }),
+          })
+          input.value = ''
+          showQuotationDetail(id)
+        } catch (e) {
+          showToast(e.message)
+        }
+        input.disabled = false
+      })
+    } catch (e) {
+      main.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message) + '</p></div>'
+    }
+  }
+
+  window.showQuoteForm = function() {
+    const main = document.querySelector('.dash-main')
+    main.innerHTML = `
+      <div class="dash-header">
+        <div>
+          <h1>New Quotation Request</h1>
+          <p class="subtitle">Tell us about your project requirements</p>
+        </div>
+      </div>
+      <form class="dash-form" id="quoteForm">
+        <div class="form-group">
+          <label>Service Type</label>
+          <select id="serviceId" required>
+            <option value="">Select a service...</option>
+            ${services.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Project Title</label>
+          <input type="text" id="title" required placeholder="e.g. E-commerce Website">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="description" rows="4" required placeholder="Describe your project in detail..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Goals (optional)</label>
+          <textarea id="goals" rows="2" placeholder="What do you want to achieve?"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Budget Range (optional)</label>
+          <input type="text" id="budgetRange" placeholder="e.g. ₹50,000 - ₹1,00,000">
+        </div>
+        <div class="form-group">
+          <label>Timeline (optional)</label>
+          <input type="text" id="timeline" placeholder="e.g. 4-6 weeks">
+        </div>
+        <div class="form-group">
+          <label>Preferred Technologies (optional)</label>
+          <input type="text" id="preferredTechnologies" placeholder="e.g. React, Node.js, PostgreSQL">
+        </div>
+        <div class="form-group">
+          <label>Reference Links (optional)</label>
+          <input type="text" id="referenceLinks" placeholder="e.g. https://example.com">
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <textarea id="notes" rows="2" placeholder="Any additional information"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Attachments (optional)</label>
+          <input type="file" id="attachmentFiles" multiple accept="image/*,.pdf,.doc,.docx,.txt,.zip" style="padding:8px;font-size:13px">
+          <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">Max 5 files, 5MB each. Supported: images, PDF, DOC, TXT, ZIP</div>
+          <div id="filePreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
+        <div class="quick-actions">
+          <button type="submit" class="btn btn-primary">Submit Request</button>
+          <button type="button" class="btn btn-secondary" onclick="loadPage('quotations')">Cancel</button>
+        </div>
+      </form>
+    `
+    document.getElementById('attachmentFiles').addEventListener('change', function() {
+      const preview = document.getElementById('filePreview')
+      preview.innerHTML = ''
+      const maxFiles = 5
+      const maxSize = 5 * 1024 * 1024
+      const files = Array.from(this.files).slice(0, maxFiles)
+      files.forEach(f => {
+        if (f.size > maxSize) { showToast(f.name + ' exceeds 5MB limit'); return }
+        const chip = document.createElement('span')
+        chip.style.cssText = 'padding:4px 10px;background:var(--surface-hover);border:1px solid var(--border);border-radius:999px;font-size:12px'
+        chip.textContent = f.name + ' (' + (f.size / 1024).toFixed(0) + 'KB)'
+        preview.appendChild(chip)
+      })
+    })
+    document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn = e.target.querySelector('button[type="submit"]')
+      btn.disabled = true; btn.textContent = 'Submitting...'
+      try {
+        const fileInput = document.getElementById('attachmentFiles')
+        const files = Array.from(fileInput.files).slice(0, 5)
+        const attachments = []
+        for (const f of files) {
+          if (f.size > 5 * 1024 * 1024) continue
+          const b64 = await new Promise((resolve) => {
+            const r = new FileReader()
+            r.onload = () => resolve(r.result.split(',')[1])
+            r.readAsDataURL(f)
+          })
+          attachments.push({ name: f.name, type: f.type, size: f.size, data: b64 })
+        }
+        await api('/api/quotations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serviceId: document.getElementById('serviceId').value,
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            goals: document.getElementById('goals').value,
+            budgetRange: document.getElementById('budgetRange').value,
+            timeline: document.getElementById('timeline').value,
+            preferredTechnologies: document.getElementById('preferredTechnologies').value.split(',').map((s) => s.trim()).filter(Boolean),
+            referenceLinks: document.getElementById('referenceLinks').value.split(',').map((s) => s.trim()).filter(Boolean),
+            notes: document.getElementById('notes').value,
+            attachments,
+          }),
+        })
+        showToast('Quotation submitted successfully!')
+        loadPage('quotations')
+      } catch (e) {
+        showToast(e.message)
+        btn.disabled = false; btn.textContent = 'Submit Request'
+      }
+    })
+  }
+}
+
+async function showProjects(main) {
+  const projects = await api('/api/projects').catch(() => [])
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Projects</h1>
+        <p class="subtitle">Track your ongoing and completed projects</p>
+      </div>
+    </div>
+    ${projects.length === 0 ? `
+      <div class="empty-state">
+        <h3>No projects yet</h3>
+        <p>Projects are created once a quotation is accepted.</p>
+      </div>
+    ` : `
+      <table class="dash-table">
+        <thead><tr><th>Project</th><th>Status</th><th>Start Date</th></tr></thead>
+        <tbody>${projects.map((p) => `
+          <tr>
+            <td><strong>${p.quotation ? esc(p.quotation.title) : 'Project'}</strong></td>
+            <td><span class="badge badge-${p.status}">${p.status}</span></td>
+            <td>${new Date(p.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+}
+
+async function showInvoices(main) {
+  const invoices = await api('/api/invoices').catch(() => [])
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Invoices</h1>
+        <p class="subtitle">View your invoices and payment status</p>
+      </div>
+    </div>
+    ${invoices.length === 0 ? `
+      <div class="empty-state">
+        <h3>No invoices yet</h3>
+        <p>Invoices are generated when a quotation is accepted.</p>
+      </div>
+    ` : `
+      <table class="dash-table">
+        <thead><tr><th>Invoice #</th><th>Project</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+        <tbody>${invoices.map((inv) => {
+          const hasPendingPay = inv.payments?.some(p => p.status === 'pending')
+          const displayStatus = hasPendingPay ? 'Pending Verification' : inv.status
+          const statusClass = hasPendingPay ? 'pending' : inv.status
+          return `
+          <tr>
+            <td><strong>${esc(inv.invoiceNumber)}</strong></td>
+            <td>${inv.quotation ? esc(inv.quotation.title) : '-'}</td>
+            <td>₹${Number(inv.amount).toLocaleString()}</td>
+            <td><span class="badge badge-${statusClass}">${displayStatus}</span></td>
+            <td>${new Date(inv.issuedAt).toLocaleDateString()}</td>
+            <td style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="showInvoiceView('${inv.id}')">View</button>
+              ${inv.status === 'issued' && !hasPendingPay ? `<button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="payInvoice(event,'${inv.id}')">Pay Now</button>` : ''}
+              ${hasPendingPay ? '<span style="font-size:11px;color:var(--text-tertiary)">Awaiting verification</span>' : ''}
+            </td>
+          </tr>
+        `}).join('')}</tbody>
+      </table>
+    `}
+  `
+}
+
+window.payInvoice = async function(event, invoiceId) {
+  const btn = event.target
+  btn.disabled = true; btn.textContent = 'Processing...'
+  try {
+    const data = await api('/api/payments/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId }),
+    })
+    if (!window.Paytm) {
+      const s = document.createElement('script')
+      s.src = 'https://assets.paytm.com/latest/merchant/js/checkoutJs.js'
+      s.onload = () => initPaytmCheckout(data, btn)
+      document.head.appendChild(s)
+    } else {
+      initPaytmCheckout(data, btn)
+    }
+  } catch (e) {
+    showToast(e.message)
+    btn.disabled = false; btn.textContent = 'Pay Now'
+  }
+}
+
+function initPaytmCheckout(data, btn) {
+  window.Paytm.CheckoutJS.init({
+    root: '',
+    flow: 'DEFAULT',
+    data: { orderId: data.orderId, token: data.txnToken, tokenType: 'TXN_TOKEN', amount: data.amount },
+    handler: { notifyMerchant: function(event) {
+      if (event?.transactionStatus === 'TXN_SUCCESS') {
+        showToast('Payment successful!')
+        loadPage('invoices')
+      } else {
+        showToast(event?.transactionStatus === 'TXN_FAILURE' ? 'Payment failed. Please try again.' : 'Payment cancelled.')
+        if (btn) { btn.disabled = false; btn.textContent = 'Pay Now' }
+      }
+    }}
+  }).then(function() {
+    window.Paytm.CheckoutJS.open()
+  })
+}
+
+async function showPayments(main) {
+  const payments = await api('/api/payments').catch(() => [])
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Payments</h1>
+        <p class="subtitle">View your payment history</p>
+      </div>
+    </div>
+    ${payments.length === 0 ? `
+      <div class="empty-state">
+        <h3>No payments yet</h3>
+        <p>Payments will appear here once you make a payment.</p>
+      </div>
+    ` : `
+      <table class="dash-table">
+        <thead><tr><th>Transaction ID</th><th>Project</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${payments.map((p) => `
+          <tr>
+            <td><strong>${esc(p.paytmTransactionId)}</strong></td>
+            <td>${p.invoice?.quotation ? esc(p.invoice.quotation.title) : '-'}</td>
+            <td>₹${Number(p.amount).toLocaleString()}</td>
+            <td><span class="badge badge-${p.status}">${p.status}</span></td>
+            <td>${new Date(p.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+}
+
+function numberToWords(n) {
+  const a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen ']
+  const b = ['','','Twenty ','Thirty ','Forty ','Fifty ','Sixty ','Seventy ','Eighty ','Ninety ']
+  if (n === 0) return 'Zero'
+  const f = (num) => { let s = ''; if (num > 99) { s += a[Math.floor(num/100)] + 'Hundred '; num %= 100 } if (num > 19) { s += b[Math.floor(num/10)]; num %= 10 } if (num > 0) s += a[num]; return s }
+  let res = ''
+  if (n >= 10000000) { res += f(Math.floor(n/10000000)) + 'Crore '; n %= 10000000 }
+  if (n >= 100000) { res += f(Math.floor(n/100000)) + 'Lakh '; n %= 100000 }
+  if (n >= 1000) { res += f(Math.floor(n/1000)) + 'Thousand '; n %= 1000 }
+  if (n >= 100) { res += f(Math.floor(n/100)) + 'Hundred '; n %= 100 }
+  if (n > 0) res += f(n)
+  return res.trim() + ' Rupees Only'
+}
+
+window.showInvoiceView = async function(invoiceId) {
+  const main = document.querySelector('.dash-main')
+  main.innerHTML = '<div class="loading-state">Loading...</div>'
+  try {
+    const inv = await api('/api/invoices/' + invoiceId)
+    const total = Number(inv.amount)
+    const gst = Math.round(total * 18 / 118 * 100) / 100
+    const base = Math.round((total - gst) * 100) / 100
+    const dueDate = new Date(inv.issuedAt)
+    dueDate.setDate(dueDate.getDate() + (inv.quotation?.quoteValidityDays || 15))
+    const statusLabel = inv.status === 'paid' ? 'PAID' : inv.payments?.some(p => p.status === 'pending') ? 'Payment Pending Verification' : 'UNPAID'
+    const statusColor = inv.status === 'paid' ? '#16A34A' : '#DC2626'
+
+    main.innerHTML = `
+      <div class="dash-header inv-no-print">
+        <div>
+          <h1>Invoice ${esc(inv.invoiceNumber)}</h1>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+          <button class="btn btn-secondary" onclick="loadPage('invoices')">Back</button>
+        </div>
+      </div>
+      <div class="invoice-print" style="background:#fff;color:#000;border:1px solid #e5e7eb;border-radius:8px;padding:40px;max-width:800px;margin:0 auto;font-family:Arial,sans-serif;font-size:13px;line-height:1.5">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e3a5f;padding-bottom:24px;margin-bottom:24px">
+          <div>
+            <div style="font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:-0.5px">VIAN</div>
+            <div style="font-size:11px;font-weight:700;color:#1e3a5f;letter-spacing:3px;text-transform:uppercase;margin-top:2px">Software Solutions</div>
+          </div>
+          <div style="text-align:right;font-size:11px;color:#374151;line-height:1.6">
+            <strong style="font-size:14px;color:#1e3a5f">TAX INVOICE</strong><br>
+            <span>Vian Software Solutions Pvt. Ltd.</span><br>
+            <span>123, Tech Park, Sector 21</span><br>
+            <span>Gurugram, Haryana - 122001</span><br>
+            <span>GSTIN: 06ABCDE1234F1Z5</span><br>
+            <span>Email: finance@viannn.online</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #e5e7eb">
+          <div style="font-size:12px">
+            <strong style="color:#1e3a5f">Bill To:</strong><br>
+            <span style="font-weight:700;color:#111">${esc(user.name)}</span><br>
+            <span style="color:#374151">${esc(user.email)}</span>
+          </div>
+          <div style="text-align:right;font-size:12px">
+            <table style="border-collapse:collapse;font-size:12px">
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Invoice No.</td><td style="font-weight:700;color:#111">${esc(inv.invoiceNumber)}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Date</td><td style="color:#111">${new Date(inv.issuedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Due Date</td><td style="color:#111">${dueDate.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}</td></tr>
+              <tr><td style="color:#6b7280;padding:2px 8px 2px 0">Status</td><td style="font-weight:700;color:${statusColor}">${statusLabel}</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px">
+          <thead>
+            <tr style="background:#1e3a5f;color:#fff">
+              <th style="padding:10px 12px;text-align:left;font-weight:600">#</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:600">Description of Services</th>
+              <th style="padding:10px 12px;text-align:right;font-weight:600">HSN/SAC</th>
+              <th style="padding:10px 12px;text-align:right;font-weight:600">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #e5e7eb">
+              <td style="padding:12px;text-align:center;vertical-align:top">1</td>
+              <td style="padding:12px;vertical-align:top">
+                <strong style="color:#111">${esc(inv.quotation?.title || 'Software Development Services')}</strong>
+                ${inv.quotation?.description ? `<br><span style="color:#6b7280;font-size:11px">${esc(inv.quotation.description)}</span>` : ''}
+                ${inv.quotation?.goals ? `<br><span style="color:#6b7280;font-size:11px">Goals: ${esc(inv.quotation.goals)}</span>` : ''}
+              </td>
+              <td style="padding:12px;text-align:right;vertical-align:top;color:#6b7280">9983</td>
+              <td style="padding:12px;text-align:right;vertical-align:top;font-weight:600;color:#111">${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+          <table style="border-collapse:collapse;font-size:13px;min-width:280px">
+            <tr><td style="padding:6px 12px;color:#6b7280">Net Amount</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${base.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+            <tr><td style="padding:6px 12px;color:#6b7280">IGST @ 18%</td><td style="padding:6px 12px;text-align:right;color:#111">₹ ${gst.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+            <tr style="border-top:2px solid #1e3a5f"><td style="padding:8px 12px;font-weight:900;color:#1e3a5f;font-size:15px">Total Amount</td><td style="padding:8px 12px;text-align:right;font-weight:900;color:#1e3a5f;font-size:15px">₹ ${total.toLocaleString('en-IN', {minimumFractionDigits:2})}</td></tr>
+          </table>
+        </div>
+
+        <div style="font-size:11px;color:#6b7280;padding-top:12px;border-top:1px solid #e5e7eb;margin-bottom:16px">
+          <strong style="color:#374151">Amount in Words:</strong><br>
+          <span style="font-style:italic">${numberToWords(Math.round(total))}</span>
+        </div>
+
+        <div style="font-size:11px;color:#6b7280;padding-top:12px;border-top:1px solid #e5e7eb;margin-bottom:16px">
+          <strong style="color:#374151">Terms & Conditions:</strong><br>
+          1. Payment is due within ${inv.quotation?.quoteValidityDays || 15} days from the invoice date.<br>
+          2. Late payment may incur additional charges at 2% per month.<br>
+          3. This invoice is subject to Gurugram jurisdiction.<br>
+          4. This is a computer-generated invoice and does not require a physical signature.
+        </div>
+
+        <div style="text-align:center;font-size:10px;color:#9ca3af;padding-top:16px;border-top:1px solid #e5e7eb">
+          <span style="font-weight:700;color:#1e3a5f">Vian Software Solutions</span> &bull; GSTIN: 06ABCDE1234F1Z5 &bull; Email: finance@viannn.online<br>
+          <span>Thank you for your business!</span>
+        </div>
+      </div>
+    `
+  } catch (e) {
+    main.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + esc(e.message) + '</p></div>'
+  }
+}
+
+async function showSupport(main) {
+  const tickets = await api('/api/support/tickets').catch(() => [])
+  main.innerHTML = `
+    <div class="dash-header">
+      <div>
+        <h1>Support</h1>
+        <p class="subtitle">Contact support and view your tickets</p>
+      </div>
+      <button class="btn btn-primary" onclick="showNewTicket()">New Ticket</button>
+    </div>
+    ${tickets.length === 0 ? `
+      <div class="empty-state">
+        <h3>No support tickets</h3>
+        <p>Create a ticket and we'll get back to you.</p>
+      </div>
+    ` : `
+      <table class="dash-table">
+        <thead><tr><th>Subject</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${tickets.map((t) => `
+          <tr>
+            <td><strong>${esc(t.subject)}</strong></td>
+            <td><span class="badge badge-${t.status}">${t.status}</span></td>
+            <td>${new Date(t.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+
+  window.showNewTicket = function() {
+    const main = document.querySelector('.dash-main')
+    main.innerHTML = `
+      <div class="dash-header">
+        <div>
+          <h1>New Support Ticket</h1>
+          <p class="subtitle">How can we help you?</p>
+        </div>
+      </div>
+      <form class="dash-form" id="ticketForm">
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" id="subject" required placeholder="Brief description of your issue">
+        </div>
+        <div class="quick-actions">
+          <button type="submit" class="btn btn-primary">Submit Ticket</button>
+          <button type="button" class="btn btn-secondary" onclick="loadPage('support')">Cancel</button>
+        </div>
+      </form>
+    `
+    document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn = e.target.querySelector('button[type="submit"]')
+      btn.disabled = true; btn.textContent = 'Submitting...'
+      try {
+        await api('/api/support/tickets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject: document.getElementById('subject').value }),
+        })
+        showToast('Ticket created successfully!')
+        loadPage('support')
+      } catch (e) {
+        showToast(e.message)
+        btn.disabled = false; btn.textContent = 'Submit Ticket'
+      }
+    })
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div')
+  d.textContent = s || ''
+  return d.innerHTML
+}
+
+function showToast(msg) {
+  const t = document.querySelector('[data-toast]')
+  if (t) { t.textContent = msg; t.classList.add('show'); clearTimeout(window._t); window._t = setTimeout(() => t.classList.remove('show'), 3200) }
+}
+
+(async function() {
+  const app = document.getElementById('app')
+
+  try {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 10000)
+    const res = await fetch('/api/auth/me', { credentials: 'include', signal: ctrl.signal })
+    clearTimeout(to)
+    if (!res.ok) throw new Error('not authenticated')
+    const data = await res.json()
+    user = data.user
+
+    app.innerHTML = `
+      <div class="dash-layout">
+        <aside class="dash-sidebar">
+          <a data-page="dashboard" class="active" onclick="loadPage('dashboard')">Dashboard</a>
+          <a data-page="quotations" onclick="loadPage('quotations')">Quotations</a>
+          <a data-page="projects" onclick="loadPage('projects')">Projects</a>
+          <a data-page="invoices" onclick="loadPage('invoices')">Invoices</a>
+          <a data-page="payments" onclick="loadPage('payments')">Payments</a>
+          <a data-page="support" onclick="loadPage('support')">Support</a>
+          <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+          <a style="position:relative" onclick="showNotifications()">Notifications <span id="notifBadge" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:999px;font-weight:700"></span></a>
+          <a onclick="logout()">Sign Out</a>
+        </aside>
+        <div class="dash-main">
+          <div class="loading-state">Loading...</div>
+        </div>
+      </div>
+    `
+
+    loadPage('dashboard')
+    fetchNotifications()
+    startUserPolling()
+  } catch {
+    app.innerHTML = `
+      <div class="auth-page">
+        <div class="auth-card">
+          <h2>Sign in required</h2>
+          <p>You need to be logged in to access your dashboard.</p>
+          <a class="btn btn-primary" href="/login">Sign In</a>
+        </div>
+      </div>
+    `
+  }
+})()
+
+async function fetchNotifications() {
+  try {
+    const data = await api('/api/notifications')
+    const badge = document.getElementById('notifBadge')
+    if (badge) {
+      if (data.unread > 0) { badge.style.display = 'inline'; badge.textContent = data.unread > 99 ? '99+' : data.unread }
+      else { badge.style.display = 'none' }
+    }
+    if (data.unread > userLastUnread && userLastUnread > 0) {
+      loadPage(currentPage)
+    }
+    userLastUnread = data.unread
+    window._notifications = data.notifications
+  } catch {}
+}
+
+function startUserPolling() {
+  if (userPollTimer) clearInterval(userPollTimer)
+  userPollTimer = setInterval(fetchNotifications, 2000)
+}
+
+window.showNotifications = function() {
+  const main = document.querySelector('.dash-main')
+  const notifs = window._notifications || []
+  if (notifs.length === 0) {
+    main.innerHTML = '<div class="dash-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated on your quotations, invoices, and payments</p></div></div><div class="empty-state"><h3>No notifications</h3><p>You\'re all caught up!</p></div>'
+  } else {
+    main.innerHTML = '<div class="dash-header"><div><h1>Notifications</h1><p class="subtitle">Stay updated on your quotations, invoices, and payments</p></div></div><div style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">' + notifs.map(n => '<div style="padding:14px 18px;border-bottom:1px solid var(--border-light);background:' + (n.readAt ? 'transparent' : 'var(--surface-hover)') + '"><div style="font-size:13px;font-weight:' + (n.readAt ? '400' : '600') + '">' + esc(n.payload?.message || n.type) + '</div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">' + new Date(n.createdAt).toLocaleString() + '</div></div>').join('') + '</div><button class="btn btn-secondary" style="margin-top:16px" onclick="markNotifRead()">Mark all as read</button>'
+  }
+  if (notifs.length > 0) markNotifRead()
+}
+
+async function markNotifRead() {
+  try { await api('/api/notifications/read', { method: 'POST' }); fetchNotifications() } catch {}
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' })
+  window.location.href = '/login'
+}
+</script>
+</body>
+</html>

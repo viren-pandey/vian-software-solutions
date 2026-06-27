@@ -8,6 +8,35 @@ const prisma = new PrismaClient()
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me'
 
+// Rate limiter (in-memory sliding window)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+function rateLimit(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(key)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs })
+    return true
+  }
+  if (entry.count >= max) return false
+  entry.count++
+  return true
+}
+// Periodic cleanup to prevent memory leak
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of rateLimitMap) {
+    if (now > v.resetAt) rateLimitMap.delete(k)
+  }
+}, 60000)
+
+// Allowed origins for CSRF check
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://www.viannn.online',
+  'https://viannn.online',
+]
+
 // Paytm config
 const PAYTM_MID = process.env.PAYTM_MID || ''
 const PAYTM_MKEY = process.env.PAYTM_MKEY || ''
@@ -91,7 +120,24 @@ function requireAdmin(user: any, res: any) {
 }
 
 async function createNotification(userId: string, type: string, payload: any) {
-  await prisma.notification.create({ data: { userId, type, payload } })
+  const notification = await prisma.notification.create({ data: { userId, type, payload } })
+  const sseClients = sseConnections.get(userId)
+  if (sseClients) {
+    const data = JSON.stringify({ notification, type, payload })
+    for (const res of sseClients) {
+      try { res.write(`event: notification\ndata: ${data}\n\n`) } catch {}
+    }
+  }
+}
+
+const sseConnections = new Map<string, Set<any>>()
+
+async function auditLog(actorId: string | undefined | null, action: string, entityType: string, entityId: string, previousState?: any, newState?: any) {
+  try {
+    await prisma.auditLog.create({
+      data: { actorId, action, entityType, entityId, previousState, newState },
+    })
+  } catch {}
 }
 
 async function notifyAdmins(type: string, payload: any) {
@@ -117,6 +163,37 @@ export default async function handler(req: any, res: any) {
     const cookies = parseCookies(req)
     const path = (req.url || '').split('?')[0].replace(/\/$/, '')
     const user = await getUserFromToken(cookies)
+
+    // CSRF protection for state-changing requests
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+      const origin = req.headers.origin || ''
+      const referer = req.headers.referer || ''
+      const isSameOrigin = origin
+        ? ALLOWED_ORIGINS.some((o) => origin.startsWith(o))
+        : ALLOWED_ORIGINS.some((o) => referer.startsWith(o))
+      if (!isSameOrigin && origin) {
+        return res.status(403).json({ error: 'Cross-origin request rejected' })
+      }
+    }
+
+    // Rate limiting on auth endpoints
+    const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown'
+    if (path === '/api/auth/login' && req.method === 'POST') {
+      if (!rateLimit(`login:${clientIp}`, 5, 60000)) {
+        return res.status(429).json({ error: 'Too many login attempts. Try again later.' })
+      }
+    }
+    if (path === '/api/auth/register' && req.method === 'POST') {
+      if (!rateLimit(`register:${clientIp}`, 3, 60000)) {
+        return res.status(429).json({ error: 'Too many registration attempts. Try again later.' })
+      }
+    }
+    // Global mutation rate limit
+    if (['POST', 'PUT', 'PATCH'].includes(req.method) && user) {
+      if (!rateLimit(`mutate:${user.id}`, 60, 60000)) {
+        return res.status(429).json({ error: 'Too many requests. Try again later.' })
+      }
+    }
 
     let body: any = {}
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
@@ -243,7 +320,11 @@ export default async function handler(req: any, res: any) {
         },
       })
       if (attachments && Array.isArray(attachments)) {
+        const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+        const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
         for (const att of attachments.slice(0, 5)) {
+          if (att.size > MAX_FILE_SIZE) continue
+          if (!ALLOWED_TYPES.includes(att.type) && !att.type.startsWith('image/')) continue
           const dataUrl = `data:${att.type};base64,${att.data}`
           await prisma.attachment.create({
             data: {
@@ -295,6 +376,56 @@ export default async function handler(req: any, res: any) {
       })
       if (!inv) return res.status(404).json({ error: 'Invoice not found' })
       return res.json(inv)
+    }
+
+    // --- Client Invoice PDF ---
+    const invoicePdfMatch = path.match(/^\/api\/invoices\/([^/]+)\/pdf$/)
+    if (invoicePdfMatch && req.method === 'GET') {
+      if (!requireAuth(user, res)) return
+      const inv = await prisma.invoice.findFirst({
+        where: { id: invoicePdfMatch[1], userId: user.id },
+        include: { quotation: true, payments: true },
+      })
+      if (!inv) return res.status(404).json({ error: 'Invoice not found' })
+
+      const PDFDocument = require('pdfkit')
+      const doc = new PDFDocument({ margin: 50, size: 'A4' })
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="invoice-${inv.invoiceNumber}.pdf"`)
+      doc.pipe(res)
+
+      doc.fontSize(20).font('Helvetica-Bold').text('INVOICE', { align: 'center' })
+      doc.moveDown(0.5)
+      doc.fontSize(10).font('Helvetica').fillColor('#666').text('VIAN SOFTWARE SOLUTIONS', { align: 'center' })
+      doc.text('(Sole Proprietorship of Viren Pandey)', { align: 'center', fontSize: 8 })
+      doc.moveDown(1.5)
+
+      doc.fillColor('#000').fontSize(11)
+      doc.text(`Invoice #: ${inv.invoiceNumber}`)
+      doc.text(`Date: ${new Date(inv.issuedAt).toLocaleDateString('en-IN')}`)
+      doc.text(`Status: ${inv.status.toUpperCase()}`)
+      doc.moveDown(1)
+
+      if (inv.quotation) {
+        doc.text(`Project: ${inv.quotation.title}`)
+        doc.moveDown(0.5)
+      }
+
+      doc.moveDown(0.5)
+      doc.font('Helvetica-Bold').fontSize(12)
+      doc.text('Amount Due')
+      doc.font('Helvetica').fontSize(24).fillColor('#059669')
+      doc.text(`\u20B9${Number(inv.amount).toLocaleString('en-IN')}`)
+      doc.fillColor('#000').fontSize(10)
+
+      doc.moveDown(3)
+      doc.fontSize(8).fillColor('#999')
+      doc.text('Vian Software Solutions', { align: 'center' })
+      doc.text('Sole Proprietorship of Viren Pandey', { align: 'center', fontSize: 7 })
+      doc.text('Payment is due within 15 days of invoice date.', { align: 'center' })
+
+      doc.end()
+      return
     }
 
     // --- Client Payments ---
@@ -421,6 +552,7 @@ export default async function handler(req: any, res: any) {
       if (quoteValidityDays !== undefined) updateData.quoteValidityDays = quoteValidityDays
       if (notes !== undefined) updateData.notes = notes
       const quotation = await prisma.quotation.update({ where: { id }, data: updateData })
+      await auditLog(user.id, `status:${status || 'updated'}`, 'quotation', id, { status: body.status }, { ...updateData })
       await createNotification(quotation.userId, 'quotation_updated', {
         quotationId: id, title: quotation.title, status: status || quotation.status,
         message: `Your quotation "${quotation.title}" has been updated to ${(status || quotation.status).replace(/_/g, ' ')}.`,
@@ -472,6 +604,7 @@ export default async function handler(req: any, res: any) {
       if (status) updateData.status = status
       if (internalNotes !== undefined) updateData.internalNotes = internalNotes
       const project = await prisma.project.update({ where: { id }, data: updateData })
+      await auditLog(user.id, `status:${status || 'updated'}`, 'project', id, {}, updateData)
       return res.json(project)
     }
 
@@ -525,6 +658,36 @@ export default async function handler(req: any, res: any) {
     }
 
     // --- Notifications ---
+    if (path === '/api/notifications/stream' && req.method === 'GET') {
+      const user = await getUserFromToken(req.cookies || {})
+      if (!user) return res.status(401).json({ error: 'Not authenticated' })
+
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.setHeader('X-Accel-Buffering', 'no')
+      res.flushHeaders()
+
+      res.write(`event: connected\ndata: {}\n\n`)
+
+      if (!sseConnections.has(user.id)) sseConnections.set(user.id, new Set())
+      sseConnections.get(user.id)!.add(res)
+
+      const keepAlive = setInterval(() => {
+        try { res.write(`:keepalive\n\n`) } catch { clearInterval(keepAlive) }
+      }, 30000)
+
+      req.on('close', () => {
+        clearInterval(keepAlive)
+        const clients = sseConnections.get(user.id)
+        if (clients) {
+          clients.delete(res)
+          if (clients.size === 0) sseConnections.delete(user.id)
+        }
+      })
+      return
+    }
+
     if (path === '/api/notifications' && req.method === 'GET') {
       if (!requireAuth(user, res)) return
       const notifications = await prisma.notification.findMany({
@@ -651,6 +814,7 @@ export default async function handler(req: any, res: any) {
       if (action === 'approve') {
         await prisma.payment.update({ where: { id: paymentId }, data: { status: 'success' } })
         await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
+        await auditLog(user.id, 'payment:approve', 'payment', paymentId, { status: 'pending' }, { status: 'success' })
         const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
         if (invoice) {
           await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
@@ -661,12 +825,28 @@ export default async function handler(req: any, res: any) {
         }
       } else {
         await prisma.payment.update({ where: { id: paymentId }, data: { status: 'failed' } })
+        await auditLog(user.id, 'payment:reject', 'payment', paymentId, { status: 'pending' }, { status: 'failed', reason: body.rejectReason })
         await createNotification(payment.userId, 'payment_rejected', {
           paymentId, invoiceId: payment.invoiceId,
           message: `Your payment of ₹${Number(payment.amount).toLocaleString()} could not be verified. Please contact support.`,
         })
       }
       return res.json({ ok: true })
+    }
+
+    // --- Admin Audit Log ---
+    if (path === '/api/admin/audit-log' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const limit = Math.min(parseInt(req.query?.limit as string) || 100, 500)
+      const offset = parseInt(req.query?.offset as string) || 0
+      const logs = await prisma.auditLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+        include: { actor: { select: { id: true, name: true, email: true } } },
+      })
+      const total = await prisma.auditLog.count()
+      return res.json({ logs, total })
     }
 
     return res.status(404).json({ error: 'Not found' })

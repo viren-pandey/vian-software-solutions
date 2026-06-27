@@ -1,0 +1,193 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Badge } from '@/components/ui/Badge'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { api, ApiError } from '@/lib/api'
+import { showToast } from '@/components/ui/Toast'
+import { QUOTATION_TRANSITIONS } from '@/types/api'
+import type { Quotation, QuotationStatus } from '@/types/api'
+
+interface AdminQuotationDetailProps {
+  quotation: Quotation
+  userId: string
+}
+
+export function AdminQuotationDetail({ quotation, userId }: AdminQuotationDetailProps) {
+  const router = useRouter()
+  const q = quotation
+  const msgs = q.messages || []
+  const atts = q.attachments || []
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const msgEndRef = useRef<HTMLDivElement>(null)
+
+  const [editing, setEditing] = useState(false)
+  const [status, setStatus] = useState(q.status)
+  const [amount, setAmount] = useState(q.quotedAmount?.toString() || '')
+  const [validity, setValidity] = useState(q.quoteValidityDays?.toString() || '15')
+  const [notes, setNotes] = useState(q.notes || '')
+  const [updating, setUpdating] = useState(false)
+
+  const validNextStatuses = QUOTATION_TRANSITIONS[q.status as QuotationStatus] || []
+
+  useEffect(() => {
+    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [msgs.length])
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!message.trim()) return
+    setSending(true)
+    try {
+      await api.admin.quotations.sendMessage(q.id, message.trim())
+      setMessage('')
+      router.refresh()
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Failed to send', 'error')
+    }
+    setSending(false)
+  }
+
+  const handleUpdate = async () => {
+    setUpdating(true)
+    try {
+      await api.admin.quotations.update(q.id, {
+        status: status as QuotationStatus,
+        quotedAmount: amount ? parseFloat(amount) : undefined,
+        quoteValidityDays: validity ? parseInt(validity) : undefined,
+        notes,
+      })
+      showToast('Quotation updated successfully', 'success')
+      setEditing(false)
+      router.refresh()
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Update failed', 'error')
+    }
+    setUpdating(false)
+  }
+
+  return (
+    <>
+      <div className="admin-header">
+        <div>
+          <h1>{q.title}</h1>
+          <p className="subtitle">
+            {q.user?.name} ({q.user?.email}) &middot; {q.service?.name} &middot; <Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge>
+          </p>
+        </div>
+        <Link href="/admin/quotations" className="btn btn-secondary">Back</Link>
+      </div>
+
+      {atts.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ marginBottom: 8 }}>Attachments ({atts.length})</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {atts.map((a) => {
+              const isImg = a.mimeType?.startsWith('image/')
+              return isImg ? (
+                <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer" style={{ display: 'block', width: 100, height: 80, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface-hover)' }}>
+                  <img src={a.fileUrl} alt={a.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </a>
+              ) : (
+                <a key={a.id} href={a.fileUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-hover)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                  <span>&#128206;</span>{a.fileName}
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        {q.description && <DetailCard label="Description" value={q.description} />}
+        {q.goals && <DetailCard label="Goals" value={q.goals} />}
+        {q.budgetRange && <DetailCard label="Budget Range" value={q.budgetRange} />}
+        {q.timeline && <DetailCard label="Timeline" value={q.timeline} />}
+        {q.preferredTechnologies?.length > 0 && <DetailCard label="Technologies" value={q.preferredTechnologies.join(', ')} />}
+        {q.quotedAmount && <DetailCard label="Quoted Amount" value={formatCurrency(Number(q.quotedAmount))} />}
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        {editing ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 20, background: 'var(--surface)' }}>
+            <h3 style={{ marginBottom: 16 }}>Update Quotation</h3>
+            <div className="dash-form" style={{ maxWidth: 500 }}>
+              <div className="form-group">
+                <label>Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value as QuotationStatus)}>
+                  <option value={q.status}>{q.status.replace(/_/g, ' ')} (current)</option>
+                  {validNextStatuses.map((s) => (
+                    <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Quoted Amount (₹)</label>
+                <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Quote Validity (days)</label>
+                <input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Internal Notes (not shown to client)</label>
+                <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary" onClick={handleUpdate} disabled={updating}>
+                  {updating ? 'Updating...' : 'Update'}
+                </button>
+                <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button className="btn btn-primary" onClick={() => setEditing(true)}>
+            Edit Status / Send Quote
+          </button>
+        )}
+      </div>
+
+      <h3 style={{ marginBottom: 12 }}>Discussion</h3>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 16, marginBottom: 16, maxHeight: 400, overflowY: 'auto' }}>
+        {msgs.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 24 }}>No messages yet.</p>
+        ) : (
+          msgs.map((m) => (
+            <div key={m.id} style={{
+              marginBottom: 12, padding: '10px 14px',
+              background: m.senderId === userId ? 'var(--accent)' : 'var(--surface-hover)',
+              color: m.senderId === userId ? '#fff' : 'var(--text)',
+              borderRadius: 'var(--radius)', maxWidth: '80%',
+              marginLeft: m.senderId === userId ? 'auto' : '0',
+            }}>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+                {m.sender.name} &middot; {formatDateTime(m.createdAt)}
+              </div>
+              {m.body}
+            </div>
+          ))
+        )}
+        <div ref={msgEndRef} />
+      </div>
+
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: 8 }}>
+        <input type="text" value={message} onChange={(e) => setMessage(e.target.value)}
+          placeholder="Type your reply..." style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)' }} />
+        <button type="submit" className="btn btn-primary" disabled={sending}>{sending ? 'Sending...' : 'Send'}</button>
+      </form>
+    </>
+  )
+}
+
+function DetailCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
+      <strong>{label}</strong>
+      <p style={{ marginTop: 6, color: 'var(--text-secondary)', fontSize: 13 }}>{value}</p>
+    </div>
+  )
+}
