@@ -104,11 +104,29 @@ function QuotationForm({
   submitting: boolean
 }) {
   const [files, setFiles] = useState<File[]>([])
+  const [customService, setCustomService] = useState(false)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
     const formData = new FormData(form)
+
+    let serviceId = formData.get('serviceId') as string
+    let notes = (formData.get('notes') as string) || undefined
+
+    if (serviceId === '__other__') {
+      const manual = formData.get('manualService') as string
+      if (!manual || !manual.trim()) {
+        showToast('Please describe your service requirement', 'error')
+        return
+      }
+      notes = notes ? `[Custom Service: ${manual.trim()}] ${notes}` : `[Custom Service: ${manual.trim()}]`
+      serviceId = services[0]?.id || ''
+      if (!serviceId) {
+        showToast('No service available. Please contact support.', 'error')
+        return
+      }
+    }
 
     const attachmentPromises = files.map(async (f) => {
       const b64 = await new Promise<string>((resolve) => {
@@ -121,7 +139,7 @@ function QuotationForm({
 
     Promise.all(attachmentPromises).then((attachments) => {
       onSubmit({
-        serviceId: formData.get('serviceId') as string,
+        serviceId,
         title: formData.get('title') as string,
         description: formData.get('description') as string,
         goals: (formData.get('goals') as string) || undefined,
@@ -131,7 +149,7 @@ function QuotationForm({
           .split(',').map((s) => s.trim()).filter(Boolean),
         referenceLinks: ((formData.get('referenceLinks') as string) || '')
           .split(',').map((s) => s.trim()).filter(Boolean),
-        notes: (formData.get('notes') as string) || undefined,
+        notes,
         attachments,
       })
     })
@@ -148,12 +166,22 @@ function QuotationForm({
       <form className="dash-form" onSubmit={handleSubmit} style={{ maxWidth: 600 }}>
         <div className="form-group">
           <label>Service Type</label>
-          <select name="serviceId" required>
+          <select name="serviceId" required onChange={(e) => setCustomService(e.target.value === '__other__')}>
             <option value="">Select a service...</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
+            <option value="__other__">Other (describe manually)</option>
           </select>
+          {customService && (
+            <input
+              type="text"
+              name="manualService"
+              placeholder="Describe your service requirement..."
+              style={{ marginTop: 8, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, width: '100%' }}
+              autoFocus
+            />
+          )}
         </div>
         <div className="form-group">
           <label>Project Title</label>

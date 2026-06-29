@@ -161,12 +161,15 @@
 }
 .auth-page .password-toggle { position: relative; }
 .auth-page .password-toggle .toggle {
-  position: absolute; right: 10px; top: 50%;
+  position: absolute; right: 8px; top: 50%;
   transform: translateY(-50%);
   background: none; border: none; cursor: pointer;
-  color: var(--text-tertiary); font-size: 12px; padding: 4px;
+  color: var(--text-tertiary); font-size: 10px; padding: 2px 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: none;
 }
-.auth-page .password-toggle .toggle:hover { color: var(--text-secondary); }
+.auth-page .password-toggle .toggle:hover { opacity: 1; color: var(--text-secondary); }
 .auth-page .auth-btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 8px; }
 
 /* Print styles for invoices */

@@ -80,25 +80,32 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
         </table>
       </div>
 
-      <h3 style={{ marginBottom: 12 }}>Recent Quotations</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3>Recent Quotations</h3>
+        <Link href="/admin/quotations" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
+      </div>
       <div className="overflow-x-auto border border-[var(--border)] rounded-lg">
         <table className="admin-table">
           <thead>
             <tr>
               <th>Client</th>
               <th>Title</th>
+              <th>Service</th>
+              <th>Amount</th>
               <th>Status</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             {quotations.length === 0 ? (
-              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>No quotations yet</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 32 }}>No quotations yet</td></tr>
             ) : (
               quotations.slice(0, 10).map((q) => (
-                <tr key={q.id}>
+                <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/quotations/${q.id}`}>
                   <td>{q.user?.name || 'Unknown'}</td>
                   <td><strong>{q.title}</strong></td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{q.service?.name || '-'}</td>
+                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
                 </tr>

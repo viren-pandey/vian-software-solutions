@@ -163,40 +163,42 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
         </div>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3>Quotation History</h3>
+        <Link href="/dashboard/quotations" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
+      </div>
       {quotations.length === 0 ? (
-        <EmptyState
-          title="No quotations yet"
-          description="Request your first quote to get started."
-          action={
-            <Link href="/dashboard/quotations" className="btn btn-primary">
-              Request a Quote
-            </Link>
-          }
-        />
+        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 40, textAlign: 'center', marginBottom: 24 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>No quotations yet.</p>
+          <Link href="/dashboard/quotations" className="btn btn-primary" style={{ marginTop: 12, display: 'inline-block' }}>
+            Request a Quote
+          </Link>
+        </div>
       ) : (
-        <>
-          <h3 style={{ marginBottom: 12 }}>Recent Quotations</h3>
-          <div className="overflow-x-auto border border-[var(--border)] rounded-lg">
-            <table className="dash-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Date</th>
+        <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ marginBottom: 24 }}>
+          <table className="dash-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Service</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotations.slice(0, 5).map((q) => (
+                <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/dashboard/quotations/${q.id}`}>
+                  <td><strong>{q.title}</strong></td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{q.service?.name || '-'}</td>
+                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
+                  <td>{formatDate(q.createdAt)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {quotations.slice(0, 5).map((q) => (
-                  <tr key={q.id}>
-                    <td>{q.title}</td>
-                    <td><Badge variant={q.status}>{q.status}</Badge></td>
-                    <td>{formatDate(q.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </>
   )

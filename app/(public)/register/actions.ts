@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
@@ -13,6 +12,16 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me'
 
+function validateCaptcha(formData: FormData): boolean {
+  const a = parseInt(formData.get('ca') as string)
+  const b = parseInt(formData.get('cb') as string)
+  const expected = parseInt(formData.get('canswer') as string)
+  const userAnswer = parseInt(formData.get('captcha') as string)
+  if (isNaN(a) || isNaN(b) || isNaN(expected) || isNaN(userAnswer)) return false
+  if (a + b !== expected) return false
+  return userAnswer === expected
+}
+
 export async function registerAction(
   _prev: { error?: string; redirectTo?: string } | null,
   formData: FormData,
@@ -23,6 +32,7 @@ export async function registerAction(
 
   if (!email || !password || !name) return { error: 'Name, email, and password are required' }
   if (password.length < 8) return { error: 'Password must be at least 8 characters' }
+  if (!validateCaptcha(formData)) return { error: 'Security check failed. Please try again.' }
 
   try {
     const existing = await prisma.user.findUnique({ where: { email } })
