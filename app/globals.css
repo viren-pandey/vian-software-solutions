@@ -1,4 +1,5 @@
 @import '../css/style.css';
+@import '../css/public.css';
 
 .dash-layout {
   display: flex;

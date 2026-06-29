@@ -3,26 +3,13 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   async rewrites() {
     return [
-      { source: '/', destination: '/index.html' },
-      { source: '/about', destination: '/about.html' },
-      // blog is now handled by App Router
+      // Legacy page rewrites (not yet migrated to App Router)
       { source: '/careers', destination: '/careers.html' },
       { source: '/case-studies', destination: '/case-studies.html' },
-      { source: '/contact', destination: '/contact.html' },
-      { source: '/cookie-policy', destination: '/cookie-policy.html' },
       { source: '/disclaimer', destination: '/disclaimer.html' },
-      { source: '/faq', destination: '/faq.html' },
-      { source: '/portfolio', destination: '/portfolio.html' },
-      { source: '/pricing', destination: '/pricing.html' },
-      { source: '/privacy-policy', destination: '/privacy-policy.html' },
-      { source: '/refund-policy', destination: '/refund-policy.html' },
-      { source: '/shipping-policy', destination: '/shipping-policy.html' },
       { source: '/support', destination: '/support.html' },
-      { source: '/technologies', destination: '/technologies.html' },
-      { source: '/terms-and-conditions', destination: '/terms-and-conditions.html' },
       { source: '/login', destination: '/login.html' },
       { source: '/register', destination: '/register.html' },
-      // /dashboard and /admin are now handled by App Router
     ];
   },
 };

@@ -39,6 +39,12 @@ enum InvoiceStatus {
   void
 }
 
+enum ProductPurchaseStatus {
+  pending
+  success
+  failed
+}
+
 enum PaymentStatus {
   pending
   success
@@ -242,6 +248,23 @@ model PaymentLog {
   payment Payment? @relation(fields: [paymentId], references: [id])
 
   @@map("payment_logs")
+}
+
+model ProductPurchase {
+  id              String                 @id @default(uuid()) @db.Uuid
+  productId       String                 @map("product_id")
+  productName     String                 @map("product_name")
+  customerName    String                 @map("customer_name")
+  customerEmail   String                 @map("customer_email")
+  customerPhone   String?                @map("customer_phone")
+  amount          Decimal                @db.Decimal(10, 2)
+  status          ProductPurchaseStatus  @default(pending)
+  paytmOrderId    String?                @unique @map("paytm_order_id")
+  paytmTxnId      String?                @map("paytm_txn_id")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@map("product_purchases")
 }
 
 model Notification {

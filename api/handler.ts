@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
+import { products } from '../lib/products'
 
 const prisma = new PrismaClient()
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
@@ -968,6 +969,99 @@ export default async function handler(req: any, res: any) {
         await auditLog(user.id, 'blog:delete', 'blog_post', blogId, { title: existing.title }, null)
         return res.json({ ok: true })
       }
+    }
+
+    // --- Products: Create Order (public, no auth) ---
+    if (path === '/api/products/create-order' && req.method === 'POST') {
+      const { productId, customerName, customerEmail, customerPhone } = body
+      if (!productId || !customerName || !customerEmail) {
+        return res.status(400).json({ error: 'productId, customerName, and customerEmail are required' })
+      }
+      const product = products.find((p: any) => p.id === productId)
+      if (!product) return res.status(404).json({ error: 'Product not found' })
+      if (!PAYTM_MID || !PAYTM_MKEY) return res.status(500).json({ error: 'Payment gateway not configured' })
+      if (!rateLimit(`create-order:${customerEmail}`, 5, 60000)) {
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' })
+      }
+
+      const orderId = `PROD_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`
+      const amount = Number(product.price).toFixed(2)
+
+      const paytmBody = {
+        requestType: 'Payment',
+        mid: PAYTM_MID,
+        orderId,
+        websiteName: 'WEBSTAGING',
+        txnAmount: { value: amount, currency: 'INR' },
+        userInfo: { custId: customerEmail },
+        callbackUrl: (process.env.CALLBACK_URL || 'https://www.viannn.online') + '/api/products/callback',
+      }
+
+      const signature = paytmSignature(paytmBody)
+      const paytmRes = await fetch(`${PAYTM_HOST}/v3/order/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: paytmBody, head: { signature } }),
+      })
+      const paytmData = await paytmRes.json()
+
+      if (paytmData.body?.resultInfo?.resultStatus !== 'S') {
+        return res.status(502).json({ error: paytmData.body?.resultInfo?.resultMsg || 'Failed to create Paytm order' })
+      }
+
+      const purchase = await prisma.productPurchase.create({
+        data: {
+          productId,
+          productName: product.name,
+          customerName,
+          customerEmail,
+          customerPhone: customerPhone || null,
+          amount: product.price,
+          status: 'pending',
+          paytmOrderId: orderId,
+        },
+      })
+
+      await notifyAdmins('product_purchase', {
+        purchaseId: purchase.id,
+        productName: product.name,
+        amount: product.price,
+        customerName,
+        customerEmail,
+        message: `New purchase: ${product.name} by ${customerName} (${customerEmail}) — ₹${Number(product.price).toLocaleString()}`,
+      })
+
+      return res.json({ orderId, txnToken: paytmData.body.txnToken, amount, mid: PAYTM_MID, env: PAYTM_ENV })
+    }
+
+    // --- Products: Paytm Callback (public, no auth) ---
+    if (path === '/api/products/callback' && req.method === 'POST') {
+      const { body: cbBody, head } = body
+      if (!cbBody || !head?.signature) {
+        return res.status(400).json({ error: 'Invalid callback payload' })
+      }
+      if (!paytmVerify(cbBody, head.signature)) {
+        return res.status(400).json({ error: 'Invalid signature' })
+      }
+
+      const { orderId, status, txnId } = cbBody
+      const purchase = await prisma.productPurchase.findUnique({ where: { paytmOrderId: orderId } })
+      if (!purchase) return res.status(404).json({ error: 'Purchase not found' })
+      if (purchase.status === 'success') return res.json({ ok: true })
+
+      if (status === 'TXN_SUCCESS') {
+        await prisma.productPurchase.update({
+          where: { id: purchase.id },
+          data: { status: 'success', paytmTxnId: txnId },
+        })
+      } else if (status === 'TXN_FAILURE') {
+        await prisma.productPurchase.update({
+          where: { id: purchase.id },
+          data: { status: 'failed' },
+        })
+      }
+
+      return res.json({ ok: true })
     }
 
     return res.status(404).json({ error: 'Not found' })
