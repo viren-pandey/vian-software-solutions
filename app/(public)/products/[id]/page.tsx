@@ -117,7 +117,7 @@ export default function CheckoutPage() {
             <p style={{ marginBottom: 8 }}><strong>Amount:</strong> ₹{product.price.toLocaleString('en-IN')}</p>
             <p style={{ marginBottom: 8 }}><strong>Email:</strong> {customerEmail}</p>
             <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
-              You will receive the product delivery at your email within 24 hours. For any issues, contact us at <a href="mailto:virenpandey89@gmail.com">virenpandey89@gmail.com</a>.
+              You will receive the product delivery at your email within 24 hours. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
             </p>
           </div>
           <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>

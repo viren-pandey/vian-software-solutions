@@ -8,11 +8,11 @@ const footerLinks = {
     { name: 'Contact', href: '/contact' },
   ],
   services: [
-    { name: 'Web Development', href: '/services#websites' },
-    { name: 'Software Development', href: '/services#software' },
-    { name: 'Automation', href: '/services#automation' },
-    { name: 'Digital Growth', href: '/services#growth' },
-    { name: 'Consulting', href: '/services#consulting' },
+    { name: 'Web Development', href: '/services' },
+    { name: 'Software Development', href: '/services' },
+    { name: 'Automation', href: '/services' },
+    { name: 'AI & ML', href: '/services' },
+    { name: 'Consulting', href: '/services' },
   ],
   resources: [
     { name: 'Blog', href: '/blog' },
@@ -22,11 +22,13 @@ const footerLinks = {
     { name: 'Security', href: '/security' },
   ],
   legal: [
-    { name: 'Privacy Policy', href: '/legal/privacy-policy' },
     { name: 'Terms & Conditions', href: '/legal/terms-and-conditions' },
+    { name: 'Privacy Policy', href: '/legal/privacy-policy' },
     { name: 'Refund Policy', href: '/legal/refund-policy' },
-    { name: 'Cookie Policy', href: '/legal/cookie-policy' },
     { name: 'Delivery Policy', href: '/legal/shipping-policy' },
+    { name: 'Cookie Policy', href: '/legal/cookie-policy' },
+    { name: 'Disclaimer', href: '/legal/disclaimer' },
+    { name: 'Payment Policy', href: '/legal/payment-policy' },
   ],
 }
 
@@ -42,13 +44,13 @@ export function Footer() {
             </svg>
             <span className="brand-text">Vian</span>
           </Link>
-          <p className="muted" style={{ marginTop: 16, maxWidth: 300, fontSize: 14, lineHeight: 1.6 }}>
-            Custom software, web development, automation, and digital growth solutions.
+          <p className="muted" style={{ marginTop: 14, maxWidth: 300, fontSize: 13, lineHeight: 1.6 }}>
+            Custom software development, web applications, automation, and digital solutions. Based in Mumbai, serving clients worldwide.
           </p>
-          <p className="muted" style={{ marginTop: 8, fontSize: 13 }}>
-            <strong>Vian Software Solutions</strong> — Sole Proprietorship of Viren Pandey.
+          <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+            Vian Software Solutions — Sole Proprietorship of Viren Pandey.
           </p>
-          <p className="muted" style={{ fontSize: 13 }}>
+          <p className="muted" style={{ fontSize: 12 }}>
             Mumbai, Maharashtra, India.
           </p>
         </div>
@@ -91,10 +93,11 @@ export function Footer() {
       </div>
 
       <div className="container footer-bottom">
-        <span className="muted">&copy; {new Date().getFullYear()} Vian Software Solutions. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} Vian Software Solutions. All rights reserved.</span>
         <span className="footer-bottom-links">
           <Link href="/legal/privacy-policy">Privacy</Link>
           <Link href="/legal/terms-and-conditions">Terms</Link>
+          <Link href="/legal/refund-policy">Refunds</Link>
           <Link href="/contact">Contact</Link>
         </span>
       </div>

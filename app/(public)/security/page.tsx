@@ -74,7 +74,7 @@ export default function SecurityPage() {
           <div className="prose">
             <p>We take security seriously. If you believe you have found a security vulnerability in any of our systems, please report it to us immediately.</p>
             <div className="security-disclosure">
-              <p><strong>Email:</strong> virenpandey89@gmail.com</p>
+              <p><strong>Email:</strong> support@viannn.online</p>
               <p><strong>Response time:</strong> Within 24 hours</p>
             </div>
             <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>

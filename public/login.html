@@ -6,71 +6,55 @@
   <title>Sign In | Vian Software Solutions</title>
   <meta name="description" content="Sign in to your Vian Software Solutions account.">
   <link rel="canonical" href="https://www.viannn.online/login">
-  <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/responsive.css">
   <script defer src="js/theme.js"></script>
   <script defer src="js/app.js"></script>
   <style>
-    .auth-page { min-height: calc(100vh - var(--nav-height)); display: flex; align-items: center; justify-content: center; padding: 48px 0; }
-    .auth-card { width: 100%; max-width: 420px; margin: 0 auto; }
-    .auth-card .card { padding: 40px; }
-    .auth-card h1 { font-size: 24px; text-align: center; margin-bottom: 4px; }
+    .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 80px 24px; }
+    .auth-card { width: 100%; max-width: 400px; }
+    .auth-card-inner { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 32px; background: var(--surface); }
+    .auth-card h1 { font-size: 22px; text-align: center; margin-bottom: 4px; font-weight: 600; }
     .auth-card .subtitle { text-align: center; color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
     .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
-    .form-group input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; transition: border-color .15s; }
-    .form-group input:focus { outline: none; border-color: var(--accent); }
-    .form-group .error { color: var(--error); font-size: 12px; margin-top: 4px; display: none; }
-    .auth-btn { width: 100%; padding: 12px; font-size: 14px; margin-top: 8px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+    .form-group input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 14px; transition: border-color .15s; }
+    .form-group input:focus { outline: none; border-color: var(--text-secondary); }
+    .auth-btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 8px; }
     .auth-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-secondary); }
-    .auth-footer a { color: var(--accent); font-weight: 600; }
+    .auth-footer a { font-weight: 600; color: var(--text); }
     .auth-footer a:hover { text-decoration: underline; }
-    .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 20px; display: none; }
-    .alert-error { background: #FEF2F2; color: var(--error); border: 1px solid #FECACA; display: block; }
-    .alert-success { background: #F0FDF4; color: var(--success); border: 1px solid #BBF7D0; display: block; }
-    [data-theme="dark"] .alert-error { background: rgba(220,38,38,0.1); border-color: rgba(220,38,38,0.3); }
-    [data-theme="dark"] .alert-success { background: rgba(22,163,74,0.1); border-color: rgba(22,163,74,0.3); }
+    .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 20px; display: none; }
+    .alert-error { background: var(--accent-light); color: var(--error); border: 1px solid var(--border); display: block; }
+    .alert-success { background: var(--accent-light); color: var(--success); border: 1px solid var(--border); display: block; }
     .password-toggle { position: relative; }
-    .password-toggle .toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); font-size: 13px; padding: 4px; }
+    .password-toggle .toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-tertiary); font-size: 12px; padding: 4px; }
     .password-toggle .toggle:hover { color: var(--text-secondary); }
+    .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo .brand { display: inline-flex; }
   </style>
 </head>
 <body>
-<div class="site-loader" data-loader><div class="loader-ring"></div></div>
-
-<header class="topbar">
-  <nav class="nav">
-    <a class="brand" href="/">Vian</a>
-    <div class="nav-links" data-nav-links>
-      <a href="/">Home</a>
-      <a href="/about">About</a>
-      <a href="/services">Services</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/portfolio">Portfolio</a>
-      <a href="/faq">FAQ</a>
-      <a href="/contact">Contact</a>
-    </div>
-    <div class="nav-actions">
-      <button class="icon-btn" data-theme-toggle type="button" aria-label="Toggle theme">&#x25D0;</button>
-      <a class="btn btn-secondary" href="/login">Sign In</a>
-      <a class="btn btn-primary" href="/register">Get Started</a>
-      <button class="icon-btn menu-toggle" data-menu-toggle type="button" aria-label="Menu">&#x2630;</button>
-    </div>
-  </nav>
-</header>
 
 <main class="auth-page">
   <div class="auth-card">
-    <div class="card">
+    <div class="auth-card-inner">
+      <div class="auth-logo">
+        <a class="brand" href="/">
+          <svg class="logo" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="width:28px;height:28px">
+            <rect width="32" height="32" rx="8" fill="var(--text)"/>
+            <path d="M8 16L14 22L24 10" stroke="var(--bg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-text">Vian</span>
+        </a>
+      </div>
       <h1>Welcome back</h1>
-      <p class="subtitle">Sign in to your Vian account</p>
-      <div id="alert" class="alert" style="display:none"></div>
+      <p class="subtitle">Sign in to your account</p>
+      <div id="alert" class="alert"></div>
       <form id="loginForm">
         <div class="form-group">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
-          <div class="error" id="emailError"></div>
         </div>
         <div class="form-group">
           <label for="password">Password</label>
@@ -78,7 +62,6 @@
             <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
             <button type="button" class="toggle" onclick="togglePassword()">Show</button>
           </div>
-          <div class="error" id="passwordError"></div>
         </div>
         <button type="submit" class="btn btn-primary auth-btn" id="submitBtn">Sign In</button>
       </form>
@@ -88,40 +71,6 @@
     </div>
   </div>
 </main>
-
-<footer class="footer">
-  <div class="container footer-grid">
-    <div>
-      <a class="brand" href="/">Vian</a>
-      <p style="margin-top:12px">Software, web, automation, and digital growth services for modern organizations.</p>
-    </div>
-    <div>
-      <h3>Company</h3>
-      <a href="/about">About</a>
-      <a href="/portfolio">Portfolio</a>
-      <a href="/contact">Contact</a>
-      <a href="/pricing">Pricing</a>
-    </div>
-    <div>
-      <h3>Services</h3>
-      <a href="/services">Websites</a>
-      <a href="/services">Software</a>
-      <a href="/services">Digital Growth</a>
-      <a href="/support">Support</a>
-    </div>
-    <div>
-      <h3>Legal</h3>
-      <a href="/privacy-policy">Privacy Policy</a>
-      <a href="/terms-and-conditions">Terms of Service</a>
-      <a href="/refund-policy">Refund Policy</a>
-    </div>
-  </div>
-  <div class="container footer-bottom">
-    <span>&copy; 2026 Vian Software Solutions. All rights reserved.</span>
-  </div>
-</footer>
-
-<div class="toast" data-toast></div>
 
 <script>
 function togglePassword() {
@@ -137,7 +86,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const alert = document.getElementById('alert')
   btn.disabled = true; btn.textContent = 'Signing in...'
   alert.style.display = 'none'
-
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',

@@ -7,15 +7,10 @@ import { useTheme } from '@/components/ThemeProvider'
 import { Menu, X, Sun, Moon } from 'lucide-react'
 
 const navigation = [
-  { name: 'Home', href: '/' },
   { name: 'Services', href: '/services' },
   { name: 'Products', href: '/products' },
   { name: 'Projects', href: '/projects' },
-  { name: 'Pricing', href: '/pricing' },
-  { name: 'Process', href: '/process' },
   { name: 'About', href: '/about' },
-  { name: 'Technologies', href: '/technologies' },
-  { name: 'FAQ', href: '/faq' },
   { name: 'Contact', href: '/contact' },
 ]
 

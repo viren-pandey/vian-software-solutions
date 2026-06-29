@@ -5,9 +5,9 @@ export function HomeHero() {
         <div className="hero-content">
           <span className="eyebrow">Since 2022 — Mumbai, India</span>
           <h1 className="hero-title">
-            Custom Software.
+            Custom software.
             <br />
-            <span className="gradient-text">Built for Business.</span>
+            Built for business.
           </h1>
           <p className="hero-description">
             We design, develop, and maintain web applications, automation systems, and digital infrastructure
