@@ -20,7 +20,7 @@ export function useNotifications() {
 }
 
 const API_URL = typeof window !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001')
+  ? (process.env.NEXT_PUBLIC_API_URL || '')
   : ''
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
