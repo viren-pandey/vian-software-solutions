@@ -1,9 +1,15 @@
 'use server'
 
 import { cookies } from 'next/headers'
+import jwt from 'jsonwebtoken'
+import { PrismaClient } from '@prisma/client'
 import type { User } from '@/types/api'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+const prisma = globalForPrisma.prisma || new PrismaClient()
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
 
 export async function getAuthUser(): Promise<User | null> {
   try {
@@ -11,14 +17,13 @@ export async function getAuthUser(): Promise<User | null> {
     const accessToken = cookieStore.get('access_token')?.value
     if (!accessToken) return null
 
-    const res = await fetch(`${API_URL}/api/auth/me`, {
-      headers: { Cookie: `access_token=${accessToken}` },
-      cache: 'no-store',
+    const payload = jwt.verify(accessToken, ACCESS_SECRET) as { userId: string; role: string }
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { roles: true },
     })
-
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.user as User
+    if (!user) return null
+    return { id: user.id, name: user.name, email: user.email, role: user.roles[0]?.role || 'client' }
   } catch {
     return null
   }

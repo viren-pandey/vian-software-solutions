@@ -142,6 +142,33 @@
   margin-top: 4px;
 }
 
+/* Auth page styles */
+.auth-page .alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.auth-page .alert-error {
+  background: var(--accent-light);
+  color: var(--error);
+  border: 1px solid var(--border);
+}
+.auth-page .alert-success {
+  background: var(--accent-light);
+  color: var(--success);
+  border: 1px solid var(--border);
+}
+.auth-page .password-toggle { position: relative; }
+.auth-page .password-toggle .toggle {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--text-tertiary); font-size: 12px; padding: 4px;
+}
+.auth-page .password-toggle .toggle:hover { color: var(--text-secondary); }
+.auth-page .auth-btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 8px; }
+
 /* Print styles for invoices */
 @media print {
   body * { visibility: hidden; }

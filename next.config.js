@@ -8,8 +8,6 @@ const nextConfig = {
       { source: '/case-studies', destination: '/case-studies.html' },
       { source: '/disclaimer', destination: '/disclaimer.html' },
       { source: '/support', destination: '/support.html' },
-      { source: '/login', destination: '/login.html' },
-      { source: '/register', destination: '/register.html' },
     ];
   },
 };
