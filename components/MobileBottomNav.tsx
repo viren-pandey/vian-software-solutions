@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, FileText, ChevronRight, LayoutGrid, Phone, Users, Mail } from 'lucide-react'
 
 interface NavItem {
   label: string
@@ -11,6 +12,16 @@ interface NavItem {
 
 interface MobileBottomNavProps {
   items: NavItem[]
+}
+
+const iconMap: Record<string, React.ReactNode> = {
+  home: <Home size={18} />,
+  quotes: <FileText size={18} />,
+  invoices: <ChevronRight size={18} />,
+  payments: <LayoutGrid size={18} />,
+  support: <Phone size={18} />,
+  users: <Users size={18} />,
+  chats: <Mail size={18} />,
 }
 
 export function MobileBottomNav({ items }: MobileBottomNavProps) {
@@ -31,7 +42,7 @@ export function MobileBottomNav({ items }: MobileBottomNavProps) {
                   : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
               }`}
             >
-              <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{iconMap[item.icon]}</span>
               <span style={{ fontSize: 10, lineHeight: 1 }} className="truncate max-w-full">
                 {item.label}
               </span>
@@ -44,17 +55,17 @@ export function MobileBottomNav({ items }: MobileBottomNavProps) {
 }
 
 export const DASHBOARD_BOTTOM_NAV = [
-  { label: 'Home', href: '/dashboard', icon: '\u2302' },
-  { label: 'Quotes', href: '/dashboard/quotations', icon: '\u2630' },
-  { label: 'Invoices', href: '/dashboard/invoices', icon: '\u25B8' },
-  { label: 'Payments', href: '/dashboard/payments', icon: '\u25C8' },
-  { label: 'Support', href: '/dashboard/support', icon: '\u260E' },
+  { label: 'Home', href: '/dashboard', icon: 'home' },
+  { label: 'Quotes', href: '/dashboard/quotations', icon: 'quotes' },
+  { label: 'Invoices', href: '/dashboard/invoices', icon: 'invoices' },
+  { label: 'Payments', href: '/dashboard/payments', icon: 'payments' },
+  { label: 'Support', href: '/dashboard/support', icon: 'support' },
 ]
 
 export const ADMIN_BOTTOM_NAV = [
-  { label: 'Home', href: '/admin', icon: '\u2302' },
-  { label: 'Quotes', href: '/admin/quotations', icon: '\u2630' },
-  { label: 'Users', href: '/admin/users', icon: '\u263A' },
-  { label: 'Payments', href: '/admin/payments', icon: '\u25C8' },
-  { label: 'Chats', href: '/admin/chats', icon: '\u2709' },
+  { label: 'Home', href: '/admin', icon: 'home' },
+  { label: 'Quotes', href: '/admin/quotations', icon: 'quotes' },
+  { label: 'Users', href: '/admin/users', icon: 'users' },
+  { label: 'Payments', href: '/admin/payments', icon: 'payments' },
+  { label: 'Chats', href: '/admin/chats', icon: 'chats' },
 ]
