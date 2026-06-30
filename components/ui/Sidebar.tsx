@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface NavItem {
   label: string
@@ -10,59 +12,81 @@ interface NavItem {
   icon?: React.ReactNode
 }
 
-interface SidebarProps {
-  title: string
+interface NavSection {
+  title?: string
   items: NavItem[]
-  footer?: NavItem[]
-  role?: string
 }
 
-export function Sidebar({ title, items, footer, role }: SidebarProps) {
+interface SidebarProps {
+  title: string
+  sections: NavSection[]
+  footer?: NavItem[]
+}
+
+export function Sidebar({ title, sections, footer }: SidebarProps) {
   const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
+
+  const isActive = (href: string) => {
+    if (href === '/admin' || href === '/dashboard') return pathname === href
+    return pathname?.startsWith(href)
+  }
 
   return (
-    <aside className="w-36 border-r border-[var(--border)] p-3 flex-shrink-0 hidden md:block">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mb-2 font-semibold">
-        {title}
+    <aside className={`dash-sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <div className="dash-sidebar-header">
+        <span className="brand-icon">V</span>
+        {!collapsed && <span className="brand-text">{title}</span>}
+        <button
+          className="dash-sidebar-toggle"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
       </div>
-      <nav className="space-y-0.5">
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium transition-colors',
-              pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href))
-                ? 'bg-[var(--surface-hover)] text-[var(--text)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]',
+
+      <nav className="dash-sidebar-nav">
+        {sections.map((section, i) => (
+          <div key={i} className="dash-nav-section">
+            {section.title && !collapsed && (
+              <div className="dash-nav-section-title">{section.title}</div>
             )}
-          >
-            {item.icon}
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      {footer && (
-        <>
-          <hr className="border-[var(--border)] my-2" />
-          <nav className="space-y-0.5">
-            {footer.map((item) => (
+            {section.items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium transition-colors',
-                  pathname === item.href
-                    ? 'bg-[var(--surface-hover)] text-[var(--text)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]',
+                  'dash-nav-item',
+                  isActive(item.href) && 'active',
                 )}
+                title={collapsed ? item.label : undefined}
               >
-                {item.icon}
-                {item.label}
+                {item.icon && <span className="nav-icon">{item.icon}</span>}
+                {!collapsed && <span className="nav-label">{item.label}</span>}
               </Link>
             ))}
-          </nav>
-        </>
+          </div>
+        ))}
+      </nav>
+
+      {footer && footer.length > 0 && (
+        <div className="dash-sidebar-footer">
+          {footer.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'dash-nav-item',
+                isActive(item.href) && 'active',
+              )}
+              title={collapsed ? item.label : undefined}
+            >
+              {item.icon && <span className="nav-icon">{item.icon}</span>}
+              {!collapsed && <span className="nav-label">{item.label}</span>}
+            </Link>
+          ))}
+        </div>
       )}
     </aside>
   )

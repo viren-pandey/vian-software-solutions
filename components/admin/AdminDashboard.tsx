@@ -6,6 +6,7 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { User, Quotation, AdminStats } from '@/types/api'
+import { Users, FileText, FolderKanban, DollarSign, Clock } from 'lucide-react'
 
 interface AdminDashboardProps {
   stats: AdminStats
@@ -17,23 +18,31 @@ interface AdminDashboardProps {
 export function AdminDashboard({ stats, users, quotations, user }: AdminDashboardProps) {
   const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | 'all'>('all')
   const pastRecords = quotations.filter((q) => ['PAID', 'REJECTED', 'CANCELLED'].includes(q.status))
+  const pendingQuotations = quotations.filter((q) => q.status === 'SUBMITTED' || q.status === 'UNDER_REVIEW')
+  const activeProjects = stats.projects
+
+  const statCards = [
+    { value: stats.quotations, label: 'Total Quotations', icon: <FileText size={18} />, color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
+    { value: stats.users, label: 'Total Users', icon: <Users size={18} />, color: '#7C3AED', bg: 'rgba(124,58,237,0.1)' },
+    { value: activeProjects, label: 'Projects', icon: <FolderKanban size={18} />, color: '#059669', bg: 'rgba(5,150,105,0.1)' },
+    { value: formatCurrency(stats.revenue), label: 'Total Revenue', icon: <DollarSign size={18} />, color: '#D97706', bg: 'rgba(217,119,6,0.1)' },
+    { value: pendingQuotations.length, label: 'Pending Review', icon: <Clock size={18} />, color: '#DC2626', bg: 'rgba(220,38,38,0.1)' },
+  ]
 
   return (
     <>
-      <div className="admin-header">
+      <div className="dash-welcome">
         <div>
-          <h1>Admin Dashboard</h1>
-          <p className="subtitle">Welcome back, {user.name}</p>
+          <h2>Welcome back, {user.name}</h2>
+          <p>Here&apos;s what&apos;s happening with your business today.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="badge" style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
-            {user.role}
-          </span>
+          <span className="dash-badge dash-badge-info">{user.role}</span>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user.email}</span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {(['today', '7d', '30d', 'all'] as const).map((range) => (
           <button
             key={range}
@@ -46,16 +55,26 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
         ))}
       </div>
 
-      <div className="admin-stats">
-        <StatCard value={stats.quotations} label="Quotations" />
-        <StatCard value={stats.users} label="Users" />
-        <StatCard value={stats.projects} label="Projects" />
-        <StatCard value={formatCurrency(stats.revenue)} label="Revenue" />
+      <div className="dash-stats-grid">
+        {statCards.map((card) => (
+          <div key={card.label} className="dash-stat-card">
+            <div className="stat-top">
+              <div className="stat-label">{card.label}</div>
+              <div className="stat-icon" style={{ background: card.bg, color: card.color }}>
+                {card.icon}
+              </div>
+            </div>
+            <div className="stat-value">{card.value}</div>
+          </div>
+        ))}
       </div>
 
-      <h3 style={{ marginBottom: 12 }}>Recent Users</h3>
-      <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ marginBottom: 32 }}>
-        <table className="admin-table">
+      <div className="dash-section-header">
+        <h3>Recent Users</h3>
+        <Link href="/admin/users" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
+      </div>
+      <div className="dash-table-wrap" style={{ marginBottom: 28 }}>
+        <table className="dash-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -66,10 +85,10 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
           </thead>
           <tbody>
             {users.length === 0 ? (
-              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>No users yet</td></tr>
+              <tr><td colSpan={4}><div className="dash-empty"><p>No users yet</p></div></td></tr>
             ) : (
-              users.slice(0, 10).map((u) => (
-                <tr key={u.id}>
+              users.slice(0, 8).map((u) => (
+                <tr key={u.id} className="clickable" onClick={() => window.location.href = `/admin/users`}>
                   <td><strong>{u.name}</strong></td>
                   <td>{u.email}</td>
                   <td><Badge variant={u.role}>{u.role}</Badge></td>
@@ -81,12 +100,12 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
         </table>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div className="dash-section-header">
         <h3>Recent Quotations</h3>
         <Link href="/admin/quotations" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
       </div>
-      <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ marginBottom: 24 }}>
-        <table className="admin-table">
+      <div className="dash-table-wrap" style={{ marginBottom: 28 }}>
+        <table className="dash-table">
           <thead>
             <tr>
               <th>Client</th>
@@ -99,13 +118,13 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
           </thead>
           <tbody>
             {quotations.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 32 }}>No quotations yet</td></tr>
+              <tr><td colSpan={6}><div className="dash-empty"><p>No quotations yet</p></div></td></tr>
             ) : (
-              quotations.slice(0, 10).map((q) => (
-                <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/quotations/${q.id}`}>
+              quotations.slice(0, 8).map((q) => (
+                <tr key={q.id} className="clickable" onClick={() => window.location.href = `/admin/quotations/${q.id}`}>
                   <td>{q.user?.name || 'Unknown'}</td>
                   <td><strong>{q.title}</strong></td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{q.service?.name || '-'}</td>
+                  <td>{q.service?.name || '-'}</td>
                   <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
@@ -118,12 +137,12 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
 
       {pastRecords.length > 0 && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div className="dash-section-header">
             <h3>Past Records</h3>
             <Link href="/admin/quotations" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
           </div>
-          <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ opacity: 0.85 }}>
-            <table className="admin-table">
+          <div className="dash-table-wrap" style={{ opacity: 0.85 }}>
+            <table className="dash-table">
               <thead>
                 <tr>
                   <th>Client</th>
@@ -135,11 +154,11 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
                 </tr>
               </thead>
               <tbody>
-                {pastRecords.slice(0, 10).map((q) => (
-                  <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/admin/quotations/${q.id}`}>
+                {pastRecords.slice(0, 8).map((q) => (
+                  <tr key={q.id} className="clickable" onClick={() => window.location.href = `/admin/quotations/${q.id}`}>
                     <td>{q.user?.name || 'Unknown'}</td>
                     <td><strong>{q.title}</strong></td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{q.service?.name || '-'}</td>
+                    <td>{q.service?.name || '-'}</td>
                     <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                     <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                     <td>{formatDate(q.createdAt)}</td>
