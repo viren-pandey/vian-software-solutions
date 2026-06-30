@@ -227,7 +227,6 @@ export default function ServicesPage() {
             {products.slice(0, 6).map(product => (
               <div key={product.id} className="product-page-card">
                 <div className="product-page-header">
-                  <span className="product-page-icon">{product.icon}</span>
                   <span className="product-page-category">{product.category}</span>
                 </div>
                 <h3 className="product-page-title">{product.name}</h3>
@@ -237,7 +236,7 @@ export default function ServicesPage() {
                     <span className="product-page-currency">₹</span>
                     <span className="product-page-amount">{product.price.toLocaleString('en-IN')}</span>
                   </div>
-                  <Link href={`/products/${product.id}`} className="btn btn-primary btn-block">Buy Now</Link>
+                  <Link href={`/products/${product.id}`} className="btn btn-dark btn-block">Buy Now</Link>
                 </div>
               </div>
             ))}

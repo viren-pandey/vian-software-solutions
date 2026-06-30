@@ -39,8 +39,8 @@ export default function ProductsPage() {
             <span>Products</span>
           </div>
           <span className="eyebrow">Ready-Made Products</span>
-          <h1>Pre-built scripts & tools.</h1>
-          <p className="lead">Professional-grade scripts, dashboards, and tools ready for instant purchase and deployment. Full source code included.</p>
+          <h1>Production-ready code, instant delivery.</h1>
+          <p className="lead">Each product includes complete source code, setup documentation, and a structured delivery over three weeks. No subscriptions, no hidden fees — you own everything.</p>
         </div>
       </section>
 
@@ -60,26 +60,36 @@ export default function ProductsPage() {
             {products.map(product => (
               <div key={product.id} className="product-page-card">
                 <div className="product-page-header">
-                  <span className="product-page-icon">{product.icon}</span>
                   <span className="product-page-category">{product.category}</span>
                 </div>
                 <h3 className="product-page-title">{product.name}</h3>
                 <p className="product-page-desc">{product.desc}</p>
+
+                <div className="product-page-delivery">
+                  <strong style={{ fontSize: 13, display: 'block', marginBottom: 8, color: 'var(--text)' }}>Delivery Milestones</strong>
+                  {product.milestones.map((m, i) => (
+                    <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, paddingLeft: 12, borderLeft: '2px solid var(--accent)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text)' }}>{m.week}</span>: {m.description}
+                    </div>
+                  ))}
+                </div>
+
                 <ul className="check-list product-page-features">
                   {product.features.map(f => <li key={f}>{f}</li>)}
                 </ul>
+
                 <div className="product-page-footer">
                   <div className="product-page-price">
-                    <span className="product-page-currency">₹</span>
+                    <span className="product-page-currency">Rs.</span>
                     <span className="product-page-amount">{product.price.toLocaleString('en-IN')}</span>
                   </div>
                   <Link
-                    href={`/products/${product.id}?name=${encodeURIComponent(product.name)}&price=${product.price}&desc=${encodeURIComponent(product.desc)}`}
-                    className="btn btn-primary btn-block"
+                    href={`/products/${product.id}`}
+                    className="btn btn-dark btn-block"
                   >
                     Buy Now
                   </Link>
-                  <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 6 }}>Full source code • Instant delivery</p>
+                  <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 6 }}>Full source code - Instant delivery</p>
                 </div>
               </div>
             ))}

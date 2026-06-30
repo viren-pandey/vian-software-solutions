@@ -807,7 +807,16 @@ export default async function handler(req: any, res: any) {
 
     // --- Services (public) ---
     if (path === '/api/services' && req.method === 'GET') {
-      const services = await prisma.service.findMany({ where: { active: true }, orderBy: { name: 'asc' } })
+      let services = await prisma.service.findMany({ where: { active: true }, orderBy: { name: 'asc' } })
+      if (services.length === 0) {
+        services = [
+          { id: 'fallback-web', name: 'Website Development', slug: 'website-development', description: 'Corporate websites, landing pages, portals, and e-commerce platforms built for performance and clarity.', category: 'web', active: true },
+          { id: 'fallback-software', name: 'Software Development', slug: 'software-development', description: 'Custom applications, CRM, ERP, APIs, cloud systems, and database architecture for growing organizations.', category: 'software', active: true },
+          { id: 'fallback-automation', name: 'Automation & AI', slug: 'automation-ai', description: 'Workflow automation, AI integrations, process optimization, and intelligent reporting systems.', category: 'automation', active: true },
+          { id: 'fallback-seo', name: 'SEO & Digital Growth', slug: 'seo-digital-growth', description: 'Technical SEO, content strategy, analytics, conversion optimization, and social media consultation.', category: 'growth', active: true },
+          { id: 'fallback-consulting', name: 'Technology Consulting', slug: 'technology-consulting', description: 'Architecture review, platform selection, infrastructure planning, and technology strategy for teams.', category: 'consulting', active: true },
+        ]
+      }
       return res.json(services)
     }
 

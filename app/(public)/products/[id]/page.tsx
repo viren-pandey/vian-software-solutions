@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { products, getProduct } from '@/lib/products'
-import { Loader2, CheckCircle, ArrowLeft } from 'lucide-react'
+import { getProduct } from '@/lib/products'
+import { Loader2 } from 'lucide-react'
 
 export default function CheckoutPage() {
   const params = useParams()
@@ -106,7 +106,15 @@ export default function CheckoutPage() {
     return (
       <section className="page-hero">
         <div className="container" style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto' }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}><CheckCircle size={64} style={{ color: 'var(--success)' }} /></div>
+          <div style={{
+            width: 72, height: 72, margin: '0 auto 20px',
+            background: 'var(--success)', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
           <h1>Payment Successful!</h1>
           <p className="lead">Thank you for your purchase, {customerName}. Your order for <strong>{product.name}</strong> has been received.</p>
           <div style={{
@@ -114,15 +122,29 @@ export default function CheckoutPage() {
             padding: 24, marginTop: 24, textAlign: 'left'
           }}>
             <p style={{ marginBottom: 8 }}><strong>Product:</strong> {product.name}</p>
-            <p style={{ marginBottom: 8 }}><strong>Amount:</strong> ₹{product.price.toLocaleString('en-IN')}</p>
+            <p style={{ marginBottom: 8 }}><strong>Amount:</strong> Rs.{product.price.toLocaleString('en-IN')}</p>
             <p style={{ marginBottom: 8 }}><strong>Email:</strong> {customerEmail}</p>
+            <div className="checkout-delivery-schedule" style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Delivery Schedule</p>
+              {product.milestones.map((m, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 10, padding: '8px 0', borderBottom: i < product.milestones.length - 1 ? '1px solid var(--border-light)' : 'none',
+                  fontSize: 13, alignItems: 'flex-start'
+                }}>
+                  <div style={{
+                    minWidth: 90, fontWeight: 600, color: 'var(--accent)', fontSize: 12, paddingTop: 1
+                  }}>{m.week}</div>
+                  <div style={{ color: 'var(--text-secondary)' }}>{m.description}</div>
+                </div>
+              ))}
+            </div>
             <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
               You will receive the product delivery at your email within 24 hours. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
             </p>
           </div>
-          <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/products" className="btn btn-secondary">Browse More Products</Link>
-            <Link href="/" className="btn btn-primary">Go Home</Link>
+            <Link href="/" className="btn btn-dark">Go Home</Link>
           </div>
         </div>
       </section>
@@ -148,46 +170,42 @@ export default function CheckoutPage() {
 
       <section className="section">
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, maxWidth: 900, margin: '0 auto' }}>
-            <div>
+          <div className="checkout-grid">
+            <div className="checkout-col">
               <h2 style={{ marginBottom: 24 }}>Order Summary</h2>
-              <div style={{
-                background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-                padding: 24
-              }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>{product.icon}</div>
+              <div className="checkout-card">
+
                 <h3 style={{ marginBottom: 8 }}>{product.name}</h3>
                 <p className="muted" style={{ marginBottom: 16, fontSize: 14 }}>{product.desc}</p>
                 <ul className="check-list" style={{ marginBottom: 20 }}>
                   {product.features.map(f => <li key={f} style={{ fontSize: 14 }}>{f}</li>)}
                 </ul>
-                <div style={{
-                  borderTop: '1px solid var(--border)', paddingTop: 16,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                }}>
+
+                <div className="checkout-delivery-schedule">
+                  <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14, color: 'var(--text)' }}>Delivery Schedule</p>
+                  {product.milestones.map((m, i) => (
+                    <div key={i} className="checkout-milestone">
+                      <div className="checkout-milestone-label">{m.week}</div>
+                      <div className="checkout-milestone-desc">{m.description}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="checkout-total">
                   <span style={{ fontWeight: 600 }}>Total</span>
-                  <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--primary)' }}>
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
+                  <span className="checkout-total-amount">Rs.{product.price.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
 
-            <div>
+            <div className="checkout-col">
               <h2 style={{ marginBottom: 24 }}>Your Details</h2>
               {step === 'error' && (
-                <div style={{
-                  padding: 12, marginBottom: 16, border: '1px solid var(--error)',
-                  borderRadius: 'var(--radius)', background: 'rgba(220,38,38,0.06)',
-                  fontSize: 13, color: 'var(--error)'
-                }}>
+                <div className="checkout-error">
                   {errorMsg}
                 </div>
               )}
-              <form onSubmit={handleSubmit} style={{
-                background: 'var(--card-bg)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)', padding: 24
-              }}>
+              <form onSubmit={handleSubmit} className="checkout-card">
                 <div className="form-group" style={{ marginBottom: 16 }}>
                   <label className="form-label" style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: 14 }}>
                     Full Name <span style={{ color: 'var(--error)' }}>*</span>
@@ -232,7 +250,7 @@ export default function CheckoutPage() {
                 </div>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-block"
+                  className="btn btn-dark btn-block"
                   disabled={step === 'processing'}
                   style={{ padding: 14, fontSize: 16, fontWeight: 700 }}
                 >
@@ -242,7 +260,7 @@ export default function CheckoutPage() {
                       Processing...
                     </span>
                   ) : (
-                    `Pay ₹${product.price.toLocaleString('en-IN')} via Paytm`
+                    `Pay Rs.${product.price.toLocaleString('en-IN')} via Paytm`
                   )}
                 </button>
                 <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 12 }}>
