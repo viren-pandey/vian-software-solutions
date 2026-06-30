@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import { products } from '../lib/products'
+import { DEFAULT_SERVICES } from '../lib/default-services'
 
 const prisma = new PrismaClient()
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
@@ -726,8 +727,18 @@ export default async function handler(req: any, res: any) {
       if (!targetUserId || !title) return res.status(400).json({ error: 'userId and title are required' })
       const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } })
       if (!targetUser) return res.status(404).json({ error: 'User not found' })
-      const service = await prisma.service.findFirst({ where: { active: true }, orderBy: { name: 'asc' } })
-      if (!service) return res.status(500).json({ error: 'No active service found' })
+      let service = await prisma.service.findFirst({ where: { active: true }, orderBy: { name: 'asc' } })
+      if (!service) {
+        for (const svc of DEFAULT_SERVICES) {
+          await prisma.service.upsert({
+            where: { slug: svc.slug },
+            update: { name: svc.name, description: svc.description, category: svc.category, active: true },
+            create: { ...svc, active: true },
+          })
+        }
+        service = await prisma.service.findFirst({ where: { active: true }, orderBy: { name: 'asc' } })
+        if (!service) return res.status(500).json({ error: 'No active service found' })
+      }
       const quotation = await prisma.quotation.create({
         data: {
           userId: targetUserId,
@@ -804,14 +815,7 @@ export default async function handler(req: any, res: any) {
     if (path === '/api/services' && req.method === 'GET') {
       let services = await prisma.service.findMany({ where: { active: true }, orderBy: { name: 'asc' } })
       if (services.length === 0) {
-        const defaults = [
-          { name: 'Website Development', slug: 'website-development', description: 'Corporate websites, landing pages, portals, and e-commerce platforms built for performance and clarity.', category: 'web' },
-          { name: 'Software Development', slug: 'software-development', description: 'Custom applications, CRM, ERP, APIs, cloud systems, and database architecture for growing organizations.', category: 'software' },
-          { name: 'Automation & AI', slug: 'automation-ai', description: 'Workflow automation, AI integrations, process optimization, and intelligent reporting systems.', category: 'automation' },
-          { name: 'SEO & Digital Growth', slug: 'seo-digital-growth', description: 'Technical SEO, content strategy, analytics, conversion optimization, and social media consultation.', category: 'growth' },
-          { name: 'Technology Consulting', slug: 'technology-consulting', description: 'Architecture review, platform selection, infrastructure planning, and technology strategy for teams.', category: 'consulting' },
-        ]
-        for (const svc of defaults) {
+        for (const svc of DEFAULT_SERVICES) {
           await prisma.service.upsert({
             where: { slug: svc.slug },
             update: { name: svc.name, description: svc.description, category: svc.category, active: true },
