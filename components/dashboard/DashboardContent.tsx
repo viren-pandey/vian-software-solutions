@@ -15,9 +15,11 @@ interface DashboardContentProps {
 }
 
 export function DashboardContent({ user, quotations, projects, invoices }: DashboardContentProps) {
-  const active = quotations.filter((q) => !['REJECTED', 'CANCELLED'].includes(q.status))
+  const active = quotations.filter((q) => !['REJECTED', 'CANCELLED', 'PAID'].includes(q.status))
+  const pastRecords = quotations.filter((q) => ['REJECTED', 'CANCELLED', 'PAID'].includes(q.status))
   const activeProjects = projects.filter((p) => p.status === 'active')
-  const completed = quotations.filter((q) => q.status === 'PAID').length
+  const completedProjects = projects.filter((p) => p.status === 'completed')
+  const paidCount = quotations.filter((q) => q.status === 'PAID').length
   const unpaidInvoices = invoices.filter(
     (inv) => inv.status === 'issued' && !inv.payments?.some((p) => p.status === 'pending'),
   )
@@ -137,7 +139,7 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
       <div className="stat-cards">
         <StatCard value={active.length} label="Active Quotations" />
         <StatCard value={activeProjects.length} label="Active Projects" />
-        <StatCard value={completed} label="Completed" />
+        <StatCard value={paidCount} label="Paid" />
       </div>
 
       <div
@@ -199,6 +201,67 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
             </tbody>
           </table>
         </div>
+      )}
+
+      {pastRecords.length > 0 && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 24 }}>
+            <h3>Past Records</h3>
+            <Link href="/dashboard/quotations" className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View All</Link>
+          </div>
+          <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ marginBottom: 24, opacity: 0.85 }}>
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Service</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pastRecords.slice(0, 5).map((q) => (
+                  <tr key={q.id} style={{ cursor: 'pointer' }} onClick={() => window.location.href = `/dashboard/quotations/${q.id}`}>
+                    <td><strong>{q.title}</strong></td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{q.service?.name || '-'}</td>
+                    <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                    <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
+                    <td>{formatDate(q.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {completedProjects.length > 0 && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3>Completed Projects</h3>
+          </div>
+          <div className="overflow-x-auto border border-[var(--border)] rounded-lg" style={{ marginBottom: 24, opacity: 0.85 }}>
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedProjects.map((p) => (
+                  <tr key={p.id}>
+                    <td><strong>{p.quotation?.title || 'Project'}</strong></td>
+                    <td><Badge variant={p.status}>{p.status}</Badge></td>
+                    <td>{formatDate(p.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   )

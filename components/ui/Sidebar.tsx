@@ -21,8 +21,8 @@ export function Sidebar({ title, items, footer, role }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-48 border-r border-[var(--border)] p-4 flex-shrink-0 hidden md:block">
-      <div className="text-xs uppercase tracking-wider text-[var(--text-tertiary)] mb-3 font-semibold">
+    <aside className="w-36 border-r border-[var(--border)] p-3 flex-shrink-0 hidden md:block">
+      <div className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mb-2 font-semibold">
         {title}
       </div>
       <nav className="space-y-0.5">
@@ -31,7 +31,7 @@ export function Sidebar({ title, items, footer, role }: SidebarProps) {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium transition-colors',
               pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href))
                 ? 'bg-[var(--surface-hover)] text-[var(--text)]'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]',
@@ -44,14 +44,14 @@ export function Sidebar({ title, items, footer, role }: SidebarProps) {
       </nav>
       {footer && (
         <>
-          <hr className="border-[var(--border)] my-4" />
+          <hr className="border-[var(--border)] my-2" />
           <nav className="space-y-0.5">
             {footer.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  'flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium transition-colors',
                   pathname === item.href
                     ? 'bg-[var(--surface-hover)] text-[var(--text)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]',

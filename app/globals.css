@@ -10,7 +10,7 @@
   flex: 1;
   padding: 32px;
   padding-bottom: 80px;
-  max-width: 900px;
+  max-width: 1100px;
 }
 
 @media (min-width: 768px) {
@@ -44,7 +44,7 @@
   flex: 1;
   padding: 32px;
   padding-bottom: 80px;
-  max-width: 960px;
+  max-width: 1200px;
 }
 
 @media (min-width: 768px) {
@@ -55,6 +55,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -119,7 +126,7 @@
 /* Stat cards */
 .stat-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
