@@ -345,7 +345,7 @@ export default async function handler(req: any, res: any) {
         data: { threadType: 'quotation', threadId: qId, senderId: user.id, body: msgBody },
         include: { sender: { select: { id: true, name: true } } },
       })
-      await notifyAdmins('new_message', { quotationId: qId, title: q.title, userName: user.name, body: msgBody })
+      notifyAdmins('new_message', { quotationId: qId, title: q.title, userName: user.name, body: msgBody }).catch(() => {})
       return res.status(201).json(message)
     }
 
@@ -368,27 +368,24 @@ export default async function handler(req: any, res: any) {
         },
       })
       if (attachments && Array.isArray(attachments)) {
-        const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+        const MAX_FILE_SIZE = 10 * 1024 * 1024
         const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-        for (const att of attachments.slice(0, 5)) {
-          if (att.size > MAX_FILE_SIZE) continue
-          if (!ALLOWED_TYPES.includes(att.type) && !att.type.startsWith('image/')) continue
+        const valid = attachments.slice(0, 5).filter(
+          (att) => att.size <= MAX_FILE_SIZE && (ALLOWED_TYPES.includes(att.type) || att.type.startsWith('image/'))
+        )
+        await Promise.all(valid.map((att) => {
           const dataUrl = `data:${att.type};base64,${att.data}`
-          await prisma.attachment.create({
+          return prisma.attachment.create({
             data: {
-              ownerType: 'quotation',
-              ownerId: quotation.id,
-              fileUrl: dataUrl,
-              fileName: att.name || 'untitled',
-              mimeType: att.type || 'application/octet-stream',
-              sizeBytes: att.size || 0,
-              uploadedBy: user.id,
+              ownerType: 'quotation', ownerId: quotation.id, fileUrl: dataUrl,
+              fileName: att.name || 'untitled', mimeType: att.type || 'application/octet-stream',
+              sizeBytes: att.size || 0, uploadedBy: user.id,
             },
           })
-        }
+        }))
       }
-      await notifyAdmins('new_quotation', { quotationId: quotation.id, title: quotation.title, userName: user.name, message: `New quotation "${quotation.title}" submitted by ${user.name}.` })
-      await createNotification(user.id, 'quotation_submitted', { quotationId: quotation.id, title: quotation.title, message: 'Your quotation request has been submitted successfully.' })
+      notifyAdmins('new_quotation', { quotationId: quotation.id, title: quotation.title, userName: user.name, message: `New quotation "${quotation.title}" submitted by ${user.name}.` }).catch(() => {})
+      createNotification(user.id, 'quotation_submitted', { quotationId: quotation.id, title: quotation.title, message: 'Your quotation request has been submitted successfully.' }).catch(() => {})
       return res.status(201).json(quotation)
     }
 
