@@ -155,16 +155,22 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
         )}
       </div>
 
-      {q.status === 'ACCEPTED' && q.invoice && (
+      {q.status === 'ACCEPTED' && (
         <div style={{ marginBottom: 24, padding: 20, border: '2px solid #059669', borderRadius: 'var(--radius-lg)', background: 'rgba(5,150,105,0.05)' }}>
           <h3 style={{ color: '#059669', marginBottom: 8 }}>Quote Accepted</h3>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
             Invoice and project have been generated. You can view them below.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
-              View Invoice #{q.invoice.invoiceNumber}
-            </Link>
+            {q.invoice ? (
+              <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
+                View Invoice #{q.invoice.invoiceNumber}
+              </Link>
+            ) : (
+              <Link href="/dashboard/invoices" className="btn btn-primary">
+                View Invoices
+              </Link>
+            )}
             {q.project && (
               <Link href={`/dashboard/projects`} className="btn btn-secondary">
                 View Project
@@ -174,15 +180,19 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
         </div>
       )}
 
-      {q.status === 'INVOICED' && q.invoice && (
+      {q.status === 'INVOICED' && (
         <div style={{ marginBottom: 24, padding: 20, border: '2px solid var(--accent)', borderRadius: 'var(--radius-lg)', background: 'rgba(var(--accent-rgb),0.05)' }}>
           <h3 style={{ marginBottom: 8 }}>Payment Required</h3>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-            Invoice #{q.invoice.invoiceNumber} for {q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : ''} is ready for payment.
+            {q.invoice
+              ? `Invoice #${q.invoice.invoiceNumber} for ${q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : ''} is ready for payment.`
+              : 'An invoice has been generated and is ready for payment.'}
           </p>
-          <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
-            Pay Invoice
-          </Link>
+          {q.invoice && (
+            <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
+              Pay Invoice
+            </Link>
+          )}
         </div>
       )}
 

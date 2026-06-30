@@ -68,6 +68,7 @@ export function QuotationsList({ quotations, services }: QuotationsListProps) {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -82,6 +83,27 @@ export function QuotationsList({ quotations, services }: QuotationsListProps) {
                   <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
+                  <td>
+                    {q.status === 'ACCEPTED' && q.invoice ? (
+                      <Link
+                        href={`/dashboard/invoices/${q.invoice.id}`}
+                        className="btn btn-primary"
+                        style={{ padding: '2px 8px', fontSize: 11, textDecoration: 'none' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View Invoice
+                      </Link>
+                    ) : q.status === 'INVOICED' && q.invoice ? (
+                      <Link
+                        href={`/dashboard/invoices/${q.invoice.id}`}
+                        className="btn btn-primary"
+                        style={{ padding: '2px 8px', fontSize: 11, textDecoration: 'none' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Pay Now
+                      </Link>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>

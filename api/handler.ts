@@ -310,7 +310,7 @@ export default async function handler(req: any, res: any) {
       const quotations = await prisma.quotation.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
-        include: { service: true, items: true },
+        include: { service: true, items: true, invoice: true, project: true },
       })
       return res.json(quotations)
     }
@@ -495,6 +495,9 @@ export default async function handler(req: any, res: any) {
 
       if (inv.quotation) {
         doc.text(`Project: ${inv.quotation.title}`)
+        doc.moveDown(0.5)
+      } else if (inv.description) {
+        doc.text(`Description: ${inv.description}`)
         doc.moveDown(0.5)
       }
 
@@ -963,7 +966,9 @@ export default async function handler(req: any, res: any) {
         await auditLog(user.id, 'payment:approve', 'payment', paymentId, { status: 'pending' }, { status: 'success' })
         const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
         if (invoice) {
-          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+          if (invoice.quotationId) {
+            await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+          }
           await createNotification(payment.userId, 'payment_verified', {
             paymentId, invoiceId: payment.invoiceId,
             message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been verified and confirmed.`,
@@ -978,6 +983,32 @@ export default async function handler(req: any, res: any) {
         })
       }
       return res.json({ ok: true })
+    }
+
+    // --- Admin: Create Invoice Directly ---
+    if (path === '/api/admin/invoices' && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const { userId: targetUserId, amount, description } = body
+      if (!targetUserId || amount === undefined) {
+        return res.status(400).json({ error: 'userId and amount are required' })
+      }
+      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } })
+      if (!targetUser) return res.status(404).json({ error: 'User not found' })
+      const invoiceCount = await prisma.invoice.count()
+      const invoice = await prisma.invoice.create({
+        data: {
+          userId: targetUserId,
+          invoiceNumber: `INV-${String(invoiceCount + 1).padStart(4, '0')}`,
+          amount,
+          description: description || null,
+        },
+      })
+      await createNotification(targetUserId, 'invoice_created', {
+        invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, amount: Number(amount),
+        message: `Invoice ${invoice.invoiceNumber} for ₹${Number(amount).toLocaleString()} has been created for you.`,
+      })
+      await auditLog(user.id, 'invoice:create', 'invoice', invoice.id, null, { userId: targetUserId, amount, description })
+      return res.status(201).json(invoice)
     }
 
     // --- Admin Payment Requests ---
@@ -1038,6 +1069,36 @@ export default async function handler(req: any, res: any) {
         include: { payment: { include: { user: { select: { id: true, name: true, email: true } } } } },
       })
       return res.json(logs)
+    }
+
+    // --- Admin Support Tickets ---
+    if (path === '/api/admin/support/tickets' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const tickets = await prisma.supportTicket.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+      return res.json(tickets)
+    }
+
+    const adminTicketUpdateMatch = path.match(/^\/api\/admin\/support\/tickets\/([^/]+)$/)
+    if (adminTicketUpdateMatch && req.method === 'PUT') {
+      if (!requireAdmin(user, res)) return
+      const id = adminTicketUpdateMatch[1]
+      const { status } = body
+      if (!status || !['open', 'pending', 'resolved', 'closed'].includes(status)) {
+        return res.status(400).json({ error: 'Valid status is required (open, pending, resolved, closed)' })
+      }
+      const ticket = await prisma.supportTicket.update({
+        where: { id },
+        data: { status },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+      await createNotification(ticket.userId, 'ticket_updated', {
+        ticketId: id, subject: ticket.subject, status,
+        message: `Your support ticket "${ticket.subject}" has been updated to ${status}.`,
+      })
+      return res.json(ticket)
     }
 
     // --- Admin Audit Log ---

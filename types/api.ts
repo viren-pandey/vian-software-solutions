@@ -79,15 +79,17 @@ export interface Project {
 
 export interface Invoice {
   id: string
-  quotationId: string
+  quotationId?: string | null
   userId: string
   invoiceNumber: string
   amount: number
   status: InvoiceStatus
+  description?: string | null
   pdfUrl?: string | null
   issuedAt: string
   quotation?: Pick<Quotation, 'title' | 'description' | 'goals' | 'quoteValidityDays'>
   payments?: Payment[]
+  user?: Pick<User, 'id' | 'name' | 'email'>
 }
 
 export interface Payment {
@@ -128,7 +130,10 @@ export interface SupportTicket {
   userId: string
   subject: string
   status: TicketStatus
+  description?: string | null
   createdAt: string
+  updatedAt: string
+  user?: Pick<User, 'id' | 'name' | 'email'>
 }
 
 export interface Notification {

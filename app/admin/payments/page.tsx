@@ -2,7 +2,7 @@ import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { AdminPaymentsList } from '@/components/admin/AdminPaymentsList'
-import type { Payment, PaymentRequest, PaymentLogEntry, User } from '@/types/api'
+import type { Payment, PaymentRequest, PaymentLogEntry, Invoice, User } from '@/types/api'
 import type { Prisma } from '@prisma/client'
 
 export default async function AdminPaymentsPage() {
@@ -10,7 +10,7 @@ export default async function AdminPaymentsPage() {
   if (!user) redirect('/login')
   if (user.role !== 'admin' && user.role !== 'reviewer') redirect('/dashboard')
 
-  const [payments, requests, logs, rawUsers] = await Promise.all([
+  const [payments, requests, directInvoices, logs, rawUsers] = await Promise.all([
     prisma.payment.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -21,6 +21,12 @@ export default async function AdminPaymentsPage() {
     }),
     prisma.paymentRequest.findMany({
       orderBy: { createdAt: 'desc' },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      take: 50,
+    }),
+    (prisma.invoice as any).findMany({
+      where: { quotationId: null },
+      orderBy: { issuedAt: 'desc' },
       include: { user: { select: { id: true, name: true, email: true } } },
       take: 50,
     }),
@@ -44,5 +50,5 @@ export default async function AdminPaymentsPage() {
     createdAt: u.createdAt.toISOString(),
   }))
 
-  return <AdminPaymentsList payments={payments as unknown as Payment[]} requests={requests as unknown as PaymentRequest[]} logs={logs as unknown as PaymentLogEntry[]} users={users} />
+  return <AdminPaymentsList payments={payments as unknown as Payment[]} requests={requests as unknown as PaymentRequest[]} invoices={directInvoices as unknown as Invoice[]} logs={logs as unknown as PaymentLogEntry[]} users={users} />
 }

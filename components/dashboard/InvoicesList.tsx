@@ -47,7 +47,7 @@ export function InvoicesList({ invoices }: InvoicesListProps) {
                 return (
                   <tr key={inv.id}>
                     <td><strong>{inv.invoiceNumber}</strong></td>
-                    <td>{inv.quotation?.title || '-'}</td>
+                    <td>{inv.quotation?.title || inv.description || '-'}</td>
                     <td>{formatCurrency(Number(inv.amount))}</td>
                     <td><Badge variant={statusClass}>{displayStatus}</Badge></td>
                     <td>{formatDate(inv.issuedAt)}</td>

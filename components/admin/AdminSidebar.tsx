@@ -4,7 +4,7 @@ import { Sidebar } from '@/components/ui/Sidebar'
 import {
   LayoutDashboard, FileText, Users, FolderKanban, CreditCard,
   Newspaper, MessageSquare, ShieldAlert, LogOut, BarChart3,
-  Bell, Settings,
+  Bell, Settings, HelpCircle,
 } from 'lucide-react'
 
 const sections = [
@@ -29,6 +29,7 @@ const sections = [
     items: [
       { label: 'Blog', href: '/admin/blog', icon: <Newspaper size={18} /> },
       { label: 'Chats', href: '/admin/chats', icon: <MessageSquare size={18} /> },
+      { label: 'Support Tickets', href: '/admin/support-tickets', icon: <HelpCircle size={18} /> },
     ],
   },
   {

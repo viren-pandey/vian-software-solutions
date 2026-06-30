@@ -28,6 +28,9 @@ export function InvoiceDetail({ invoice, user }: InvoiceDetailProps) {
   const dueDate = new Date(inv.issuedAt)
   dueDate.setDate(dueDate.getDate() + (inv.quotation?.quoteValidityDays || 15))
 
+  const projectTitle = inv.quotation?.title || inv.description || 'Invoice'
+  const projectDescription = inv.quotation?.description || inv.description || ''
+
   const statusLabel = inv.status === 'paid'
     ? 'PAID'
     : inv.payments?.some((p) => p.status === 'pending')
@@ -159,9 +162,9 @@ export function InvoiceDetail({ invoice, user }: InvoiceDetailProps) {
             <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
               <td style={{ padding: 12, textAlign: 'center', verticalAlign: 'top' }}>1</td>
               <td style={{ padding: 12, verticalAlign: 'top' }}>
-                <strong style={{ color: '#111' }}>{inv.quotation?.title || 'Software Development Services'}</strong>
-                {inv.quotation?.description && (
-                  <><br /><span style={{ color: '#6b7280', fontSize: 11 }}>{inv.quotation.description}</span></>
+                <strong style={{ color: '#111' }}>{projectTitle}</strong>
+                {projectDescription && (
+                  <><br /><span style={{ color: '#6b7280', fontSize: 11 }}>{projectDescription}</span></>
                 )}
                 {inv.quotation?.goals && (
                   <><br /><span style={{ color: '#6b7280', fontSize: 11 }}>Goals: {inv.quotation.goals}</span></>

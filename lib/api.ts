@@ -147,6 +147,15 @@ function createApi(extraHeaders: Record<string, string> = {}) {
         start: (data: StartChatInput) =>
           request<Quotation>('/api/admin/chats/start', h({ method: 'POST', body: JSON.stringify(data) })),
       },
+      invoices: {
+        create: (data: { userId: string; amount: number; description?: string }) =>
+          request<Invoice>('/api/admin/invoices', h({ method: 'POST', body: JSON.stringify(data) })),
+      },
+      support: {
+        list: () => request<SupportTicket[]>('/api/admin/support/tickets', h()),
+        update: (id: string, data: { status: string }) =>
+          request<SupportTicket>(`/api/admin/support/tickets/${id}`, h({ method: 'PUT', body: JSON.stringify(data) })),
+      },
       paymentRequests: {
         list: () => request<PaymentRequest[]>('/api/admin/payment-requests', h()),
         create: (data: { userId: string; amount: number; description: string }) =>
