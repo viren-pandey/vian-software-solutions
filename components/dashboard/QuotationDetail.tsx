@@ -21,11 +21,25 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
   const atts = q.attachments || []
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [accepting, setAccepting] = useState(false)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [msgs.length])
+
+  const handleAccept = async () => {
+    if (!confirm('Are you sure you want to accept this quote? This will generate an invoice and project timeline.')) return
+    setAccepting(true)
+    try {
+      await api.quotations.accept(q.id)
+      showToast('Quote accepted! Invoice and project have been generated.', 'success')
+      router.refresh()
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Failed to accept quote', 'error')
+    }
+    setAccepting(false)
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -140,6 +154,54 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
           <DetailCard label="Quoted Amount" value={formatCurrency(Number(q.quotedAmount))} />
         )}
       </div>
+
+      {q.status === 'ACCEPTED' && q.invoice && (
+        <div style={{ marginBottom: 24, padding: 20, border: '2px solid #059669', borderRadius: 'var(--radius-lg)', background: 'rgba(5,150,105,0.05)' }}>
+          <h3 style={{ color: '#059669', marginBottom: 8 }}>Quote Accepted</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Invoice and project have been generated. You can view them below.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
+              View Invoice #{q.invoice.invoiceNumber}
+            </Link>
+            {q.project && (
+              <Link href={`/dashboard/projects`} className="btn btn-secondary">
+                View Project
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {q.status === 'INVOICED' && q.invoice && (
+        <div style={{ marginBottom: 24, padding: 20, border: '2px solid var(--accent)', borderRadius: 'var(--radius-lg)', background: 'rgba(var(--accent-rgb),0.05)' }}>
+          <h3 style={{ marginBottom: 8 }}>Payment Required</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Invoice #{q.invoice.invoiceNumber} for {q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : ''} is ready for payment.
+          </p>
+          <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
+            Pay Invoice
+          </Link>
+        </div>
+      )}
+
+      {q.status === 'QUOTED' && q.quotedAmount && (
+        <div style={{ marginBottom: 24, padding: 20, border: '2px solid var(--accent)', borderRadius: 'var(--radius-lg)' }}>
+          <h3 style={{ marginBottom: 8 }}>Quote Ready</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            Quoted Amount: <strong style={{ fontSize: 18, color: 'var(--text)' }}>{formatCurrency(Number(q.quotedAmount))}</strong>
+          </p>
+          {q.quoteValidityDays && (
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
+              Valid for {q.quoteValidityDays} days
+            </p>
+          )}
+          <button className="btn btn-primary" onClick={handleAccept} disabled={accepting}>
+            {accepting ? 'Processing...' : 'Accept Quote'}
+          </button>
+        </div>
+      )}
 
       <h3 style={{ marginBottom: 12 }}>Discussion</h3>
       <div

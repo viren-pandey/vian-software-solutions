@@ -315,6 +315,47 @@ export default async function handler(req: any, res: any) {
       return res.json(quotations)
     }
 
+    const quotationAcceptMatch = path.match(/^\/api\/quotations\/([^/]+)\/accept$/)
+    if (quotationAcceptMatch && req.method === 'POST') {
+      if (!requireAuth(user, res)) return
+      const qId = quotationAcceptMatch[1]
+      const q = await prisma.quotation.findFirst({ where: { id: qId, userId: user.id } })
+      if (!q) return res.status(404).json({ error: 'Quotation not found' })
+      if (q.status !== 'QUOTED') return res.status(400).json({ error: 'Quotation must be in QUOTED status to accept' })
+      if (!q.quotedAmount) return res.status(400).json({ error: 'No quoted amount set' })
+      const updated = await prisma.quotation.update({
+        where: { id: qId },
+        data: { status: 'ACCEPTED' },
+      })
+      const invoiceCount = await prisma.invoice.count()
+      const invoice = await prisma.invoice.create({
+        data: {
+          quotationId: qId,
+          userId: user.id,
+          invoiceNumber: `INV-${String(invoiceCount + 1).padStart(4, '0')}`,
+          amount: q.quotedAmount,
+        },
+      })
+      const project = await prisma.project.create({
+        data: {
+          quotationId: qId,
+          userId: user.id,
+          status: 'active',
+          startDate: new Date(),
+          targetEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      })
+      notifyAdmins('quotation_accepted', {
+        quotationId: qId, title: q.title, userName: user.name,
+        message: `Quotation "${q.title}" has been accepted by ${user.name}. Invoice ${invoice.invoiceNumber} and project have been created.`,
+      }).catch(() => {})
+      createNotification(user.id, 'quotation_accepted', {
+        quotationId: qId, title: q.title, invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, projectId: project.id,
+        message: `You have accepted the quote for "${q.title}". Invoice ${invoice.invoiceNumber} and project timeline have been generated.`,
+      }).catch(() => {})
+      return res.json({ ...updated, invoice, project })
+    }
+
     const quotationMatch = path.match(/^\/api\/quotations\/([^/]+)$/)
     if (quotationMatch && req.method === 'GET') {
       if (!requireAuth(user, res)) return

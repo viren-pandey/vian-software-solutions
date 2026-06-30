@@ -93,6 +93,8 @@ function createApi(extraHeaders: Record<string, string> = {}) {
       }) => request<Quotation>('/api/quotations', h({ method: 'POST', body: JSON.stringify(data) })),
       sendMessage: (id: string, body: string) =>
         request<Message>(`/api/quotations/${id}/messages`, h({ method: 'POST', body: JSON.stringify({ body }) })),
+      accept: (id: string) =>
+        request<Quotation>(`/api/quotations/${id}/accept`, h({ method: 'POST' })),
     },
     projects: {
       list: () => request<Project[]>('/api/projects', h()),
