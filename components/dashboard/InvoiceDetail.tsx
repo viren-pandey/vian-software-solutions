@@ -288,6 +288,9 @@ function PayButton({ invoiceId, amount }: { invoiceId: string; amount: number })
     setLoading(true)
     setError(null)
     try {
+      // Track payment initiation
+      api.payments.initiate(invoiceId).catch(() => {})
+
       const data = await api.payments.createOrder(invoiceId)
 
       if (!(window as any).Paytm) {

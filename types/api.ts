@@ -11,6 +11,8 @@ export type InvoiceStatus = 'issued' | 'paid' | 'void'
 
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded'
 
+export type PaymentRequestStatus = 'pending' | 'paid' | 'cancelled'
+
 export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed'
 
 export interface User {
@@ -95,6 +97,7 @@ export interface Payment {
   paytmTransactionId: string
   amount: number
   status: PaymentStatus
+  initiatedAt?: string | null
   createdAt: string
   invoice?: Invoice
   user?: Pick<User, 'id' | 'name' | 'email'>
@@ -180,4 +183,25 @@ export interface AuditLogEntry {
   newState: Record<string, unknown> | null
   createdAt: string
   actor: Pick<User, 'id' | 'name' | 'email'> | null
+}
+
+export interface PaymentRequest {
+  id: string
+  userId: string
+  amount: number
+  description: string
+  status: PaymentRequestStatus
+  createdAt: string
+  updatedAt: string
+  user?: Pick<User, 'id' | 'name' | 'email'>
+}
+
+export interface PaymentLogEntry {
+  id: string
+  paymentId: string | null
+  logType: string
+  rawPayload: Record<string, unknown>
+  signatureValid: boolean | null
+  receivedAt: string
+  payment?: Payment
 }

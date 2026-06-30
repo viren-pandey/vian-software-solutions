@@ -52,6 +52,12 @@ enum PaymentStatus {
   refunded
 }
 
+enum PaymentRequestStatus {
+  pending
+  paid
+  cancelled
+}
+
 enum ThreadType {
   quotation
   project
@@ -88,6 +94,7 @@ model User {
   projects        Project[]
   invoices        Invoice[]
   payments        Payment[]
+  paymentRequests PaymentRequest[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
   attachments     Attachment[]
@@ -228,6 +235,7 @@ model Payment {
   paytmTransactionId  String        @unique @map("paytm_transaction_id")
   amount              Decimal       @db.Decimal(10, 2)
   status              PaymentStatus @default(pending)
+  initiatedAt         DateTime?     @map("initiated_at")
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
 
@@ -241,13 +249,28 @@ model Payment {
 model PaymentLog {
   id              String    @id @default(uuid()) @db.Uuid
   paymentId       String?   @map("payment_id") @db.Uuid
-  rawPayload      Json      @map("raw_payload") @db.JsonB
+  logType         String    @default("callback") @map("log_type")
+  rawPayload      Json      @default("{}") @map("raw_payload") @db.JsonB
   signatureValid  Boolean?  @map("signature_valid")
   receivedAt      DateTime  @default(now()) @map("received_at")
 
   payment Payment? @relation(fields: [paymentId], references: [id])
 
   @@map("payment_logs")
+}
+
+model PaymentRequest {
+  id          String               @id @default(uuid()) @db.Uuid
+  userId      String               @map("user_id") @db.Uuid
+  amount      Decimal              @db.Decimal(10, 2)
+  description String
+  status      PaymentRequestStatus @default(pending)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("payment_requests")
 }
 
 model ProductPurchase {
@@ -294,12 +317,13 @@ model Message {
 }
 
 model SupportTicket {
-  id        String       @id @default(uuid()) @db.Uuid
-  userId    String       @map("user_id") @db.Uuid
-  subject   String
-  status    TicketStatus @default(open)
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  subject     String
+  description String?
+  status      TicketStatus @default(open)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
