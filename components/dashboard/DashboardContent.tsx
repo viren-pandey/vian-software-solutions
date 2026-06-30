@@ -1,7 +1,10 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
+import { useNotifications } from '@/components/notifications/NotificationProvider'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { User, Quotation, Project, Invoice } from '@/types/api'
 import { FileText, FolderKanban, DollarSign, CheckCircle, Clock, AlertCircle, MessageSquare } from 'lucide-react'
@@ -14,6 +17,23 @@ interface DashboardContentProps {
 }
 
 export function DashboardContent({ user, quotations, projects, invoices }: DashboardContentProps) {
+  const router = useRouter()
+  const { notifications } = useNotifications()
+  const prevCount = useRef(notifications.length)
+
+  useEffect(() => {
+    if (notifications.length > prevCount.current) {
+      prevCount.current = notifications.length
+      router.refresh()
+    }
+  }, [notifications.length, router])
+
+  useEffect(() => {
+    const onFocus = () => router.refresh()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [router])
+
   const active = quotations.filter((q) => !['REJECTED', 'CANCELLED', 'PAID'].includes(q.status))
   const pastRecords = quotations.filter((q) => ['REJECTED', 'CANCELLED', 'PAID'].includes(q.status))
   const activeProjects = projects.filter((p) => p.status === 'active')
@@ -59,7 +79,7 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
               <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Invoice {inv.invoiceNumber}</div>
-                  <div style={{ fontWeight: 600 }}>{inv.quotation?.title || 'Project Payment'}</div>
+                  <div style={{ fontWeight: 600 }}>{inv.quotation?.title || inv.description || 'Project Payment'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, color: '#D97706' }}>{formatCurrency(Number(inv.amount))}</div>
@@ -85,7 +105,7 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Invoice {inv.invoiceNumber}</div>
-                  <div style={{ fontWeight: 600 }}>{inv.quotation?.title || 'Project Payment'}</div>
+                  <div style={{ fontWeight: 600 }}>{inv.quotation?.title || inv.description || 'Project Payment'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatCurrency(Number(inv.amount))}</div>

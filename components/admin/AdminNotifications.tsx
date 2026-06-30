@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
 import { api } from '@/lib/api'
 import type { Notification } from '@/types/api'
@@ -12,7 +13,8 @@ interface AdminNotificationsProps {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  quotation_update: 'Quotation Update',
+  new_quotation: 'New Quotation',
+  payment_request_created: 'Payment Request',
   payment_received: 'Payment Received',
   new_user: 'New User',
   project_update: 'Project Update',
@@ -21,7 +23,8 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  quotation_update: '#3B82F6',
+  new_quotation: '#3B82F6',
+  payment_request_created: '#F59E0B',
   payment_received: '#10B981',
   new_user: '#8B5CF6',
   project_update: '#F59E0B',
@@ -29,7 +32,25 @@ const TYPE_COLORS: Record<string, string> = {
   system: '#6B7280',
 }
 
+function getAdminRoute(n: Notification): string | null {
+  const p = n.payload as Record<string, any>
+  switch (n.type) {
+    case 'new_quotation':
+      return p.quotationId ? `/admin/quotations/${p.quotationId}` : null
+    case 'payment_request_created':
+      return '/admin/payments'
+    case 'payment_received':
+    case 'payment_verification':
+      return p.paymentId ? `/admin/payments` : null
+    case 'message_received':
+      return p.quotationId ? `/admin/chats?quotationId=${p.quotationId}` : null
+    default:
+      return null
+  }
+}
+
 export function AdminNotifications({ notifications: initial, unread: initialUnread }: AdminNotificationsProps) {
+  const router = useRouter()
   const [notifications, setNotifications] = useState(initial)
   const [unreadCount, setUnreadCount] = useState(initialUnread)
   const [filter, setFilter] = useState<string>('all')
@@ -38,6 +59,11 @@ export function AdminNotifications({ notifications: initial, unread: initialUnre
   const types = Array.from(new Set(notifications.map((n) => n.type)))
 
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.type === filter)
+
+  const handleClick = async (n: Notification) => {
+    const route = getAdminRoute(n)
+    if (route) router.push(route)
+  }
 
   const handleMarkRead = useCallback(async (id: string) => {
     setMarking(id)
@@ -121,8 +147,13 @@ export function AdminNotifications({ notifications: initial, unread: initialUnre
               {filtered.map((n) => {
                 const isUnread = !n.readAt
                 const message = (n.payload?.message as string) || (n.payload?.subject as string) || JSON.stringify(n.payload)
+                const route = getAdminRoute(n)
                 return (
-                  <tr key={n.id} style={{ opacity: isUnread ? 1 : 0.65 }}>
+                  <tr
+                    key={n.id}
+                    style={{ opacity: isUnread ? 1 : 0.65, cursor: route ? 'pointer' : 'default' }}
+                    onClick={() => { if (route) handleClick(n) }}
+                  >
                     <td>
                       <div
                         style={{
