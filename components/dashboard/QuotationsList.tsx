@@ -106,7 +106,7 @@ function QuotationForm({
   const [files, setFiles] = useState<File[]>([])
   const [customService, setCustomService] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const form = e.currentTarget
     const formData = new FormData(form)
@@ -128,30 +128,30 @@ function QuotationForm({
       }
     }
 
-    const attachmentPromises = files.map(async (f) => {
-      const b64 = await new Promise<string>((resolve) => {
-        const r = new FileReader()
-        r.onload = () => resolve((r.result as string).split(',')[1])
-        r.readAsDataURL(f)
+    const attachments = await Promise.all(
+      files.map(async (f) => {
+        const b64 = await new Promise<string>((resolve) => {
+          const r = new FileReader()
+          r.onload = () => resolve((r.result as string).split(',')[1])
+          r.readAsDataURL(f)
+        })
+        return { name: f.name, type: f.type, size: f.size, data: b64 }
       })
-      return { name: f.name, type: f.type, size: f.size, data: b64 }
-    })
+    )
 
-    Promise.all(attachmentPromises).then((attachments) => {
-      onSubmit({
-        serviceId,
-        title: formData.get('title') as string,
-        description: formData.get('description') as string,
-        goals: (formData.get('goals') as string) || undefined,
-        budgetRange: (formData.get('budgetRange') as string) || undefined,
-        timeline: (formData.get('timeline') as string) || undefined,
-        preferredTechnologies: ((formData.get('preferredTechnologies') as string) || '')
-          .split(',').map((s) => s.trim()).filter(Boolean),
-        referenceLinks: ((formData.get('referenceLinks') as string) || '')
-          .split(',').map((s) => s.trim()).filter(Boolean),
-        notes,
-        attachments,
-      })
+    await onSubmit({
+      serviceId,
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      goals: (formData.get('goals') as string) || undefined,
+      budgetRange: (formData.get('budgetRange') as string) || undefined,
+      timeline: (formData.get('timeline') as string) || undefined,
+      preferredTechnologies: ((formData.get('preferredTechnologies') as string) || '')
+        .split(',').map((s) => s.trim()).filter(Boolean),
+      referenceLinks: ((formData.get('referenceLinks') as string) || '')
+        .split(',').map((s) => s.trim()).filter(Boolean),
+      notes,
+      attachments,
     })
   }
 
