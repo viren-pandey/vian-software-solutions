@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Team',
   description: 'Meet the founder of Vian Software Solutions. Small team, big expertise.',
+  keywords: ['viren pandey', 'founder', 'software engineer mumbai', 'vian team', 'mumbai developer', 'lead engineer'],
+  openGraph: {
+    title: 'Team - Vian Software Solutions',
+    description: 'Meet the founder of Vian Software Solutions. Small team, big expertise.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Team - Vian Software Solutions',
+    description: 'Meet the founder of Vian Software Solutions. Small team, big expertise.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/team`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function TeamPage() {
@@ -62,6 +81,27 @@ export default function TeamPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Team', item: '/team' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Person',
+            name: 'Viren Pandey',
+            jobTitle: 'Founder & Lead Engineer',
+            worksFor: {
+              '@type': 'Organization',
+              name: 'Vian Software Solutions',
+            },
+            url: `${siteUrl}/team`,
+            sameAs: ['https://www.linkedin.com/in/viren-pandey-387179222/'],
+          }),
+        }}
+      />
     </>
   )
 }

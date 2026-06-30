@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Projects',
   description: 'Projects and research by Vian Software Solutions — internal products, AI research, and client work.',
+  keywords: ['vian projects', 'software portfolio', 'internal products', 'ai research projects', 'custom software examples', 'software development projects'],
+  openGraph: {
+    title: 'Projects - Vian Software Solutions',
+    description: 'Projects and research by Vian Software Solutions — internal products, AI research, and client work.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Projects - Vian Software Solutions',
+    description: 'Projects and research by Vian Software Solutions — internal products, AI research, and client work.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/projects`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const projects = [
@@ -144,6 +163,30 @@ export default function ProjectsPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Projects', item: '/projects' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            itemListElement: projects.map((p, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              item: {
+                '@type': 'SoftwareApplication',
+                name: p.name,
+                description: p.description,
+                applicationCategory: p.type,
+                operatingSystem: 'Web',
+              },
+            })),
+          }),
+        }}
+      />
     </>
   )
 }

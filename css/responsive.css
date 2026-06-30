@@ -103,4 +103,25 @@
   .logo-strip { grid-template-columns: repeat(2, 1fr); }
   .cta-band { padding: 32px 20px; }
   .card { padding: 24px; }
+
+  .contact-grid { grid-template-columns: 1fr; }
+  .auth-card .card { padding: 24px !important; }
+  .about-cards { grid-template-columns: 1fr; }
+  .security-grid { grid-template-columns: 1fr; }
+  .service-grid { grid-template-columns: 1fr; }
+  .service-detail-header { flex-direction: column; }
+  .tech-detail-grid { grid-template-columns: 1fr; }
+  .team-profile { flex-direction: column; text-align: center; }
+  .projects-grid { grid-template-columns: 1fr; }
+  .check-list { columns: 1; }
+  .pricing-models .about-cards,
+  .team-values .about-cards { grid-template-columns: 1fr; }
+
+  .process-timeline .timeline-item { flex-direction: column; gap: 8px; }
+  .process-timeline .timeline-content { padding-left: 0; }
+  .timeline-subtitle { display: block; margin-top: 4px; }
+  .timeline-deliverables { font-size: 13px; }
+
+  .contact-form .form-row { grid-template-columns: 1fr; }
+  .faq-section { margin-bottom: 8px; }
 }

@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Refund & Cancellation Policy',
   description: 'Refund and cancellation policy for Vian Software Solutions services, projects, and digital products.',
+  keywords: ['refund policy', 'cancellation policy', 'software refund', 'service cancellation', 'digital product refund', 'vian refund'],
+  openGraph: {
+    title: 'Refund & Cancellation Policy - Vian Software Solutions',
+    description: 'Refund and cancellation policy for Vian Software Solutions services, projects, and digital products.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Refund & Cancellation Policy - Vian Software Solutions',
+    description: 'Refund and cancellation policy for Vian Software Solutions services, projects, and digital products.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/refund-policy`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RefundPolicyPage() {

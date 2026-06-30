@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Contact',
   description: 'Get in touch with Vian Software Solutions. Start a project, request a quotation, or ask a question.',
+  keywords: ['contact vian', 'software consultation', 'get a quote', 'mumbai software company', 'start a project', 'software inquiry'],
+  openGraph: {
+    title: 'Contact - Vian Software Solutions',
+    description: 'Get in touch with Vian Software Solutions. Start a project, request a quotation, or ask a question.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Contact - Vian Software Solutions',
+    description: 'Get in touch with Vian Software Solutions. Start a project, request a quotation, or ask a question.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/contact`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function ContactPage() {
@@ -175,6 +194,24 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Contact', item: '/contact' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ContactPoint',
+            telephone: '+91-9598443203',
+            contactType: 'sales',
+            email: 'support@viannn.online',
+            availableLanguage: ['English', 'Hindi'],
+            areaServed: 'IN',
+          }),
+        }}
+      />
     </>
   )
 }

@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Technologies',
   description: 'The technology stack used by Vian Software Solutions — modern, battle-tested tools for building reliable software.',
+  keywords: ['technology stack', 'react development', 'next.js', 'postgresql', 'python development', 'node.js', 'software tools', 'modern tech stack'],
+  openGraph: {
+    title: 'Technologies - Vian Software Solutions',
+    description: 'The technology stack used by Vian Software Solutions — modern, battle-tested tools for building reliable software.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Technologies - Vian Software Solutions',
+    description: 'The technology stack used by Vian Software Solutions — modern, battle-tested tools for building reliable software.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/technologies`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const techCategories = [
@@ -103,6 +122,10 @@ export default function TechnologiesPage() {
           ))}
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Technologies', item: '/technologies' }])) }}
+      />
     </>
   )
 }

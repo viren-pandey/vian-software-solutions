@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Security',
   description: 'Security practices and policies at Vian Software Solutions. How we protect your data and applications.',
+  keywords: ['software security', 'data protection', 'secure development', 'application security', 'cybersecurity practices', 'secure software india'],
+  openGraph: {
+    title: 'Security - Vian Software Solutions',
+    description: 'Security practices and policies at Vian Software Solutions. How we protect your data and applications.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Security - Vian Software Solutions',
+    description: 'Security practices and policies at Vian Software Solutions. How we protect your data and applications.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/security`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function SecurityPage() {
@@ -92,6 +111,10 @@ export default function SecurityPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Security', item: '/security' }])) }}
+      />
     </>
   )
 }

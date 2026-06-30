@@ -31,7 +31,10 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Vian Software Solutions', url: 'https://www.viannn.online' }],
   robots: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large', 'max-video-preview': -1 },
-  alternates: { canonical: 'https://www.viannn.online' },
+  alternates: {
+    canonical: 'https://www.viannn.online',
+    languages: { 'en-in': 'https://www.viannn.online' },
+  },
   openGraph: {
     type: 'website',
     locale: 'en_IN',
@@ -55,6 +58,10 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
   verification: { google: 'google-site-verification-code' },
   category: 'technology',
+  other: {
+    'geo.region': 'IN-MH',
+    'geo.placename': 'Mumbai',
+  },
 }
 
 export default function RootLayout({
@@ -80,6 +87,22 @@ export default function RootLayout({
               address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressCountry: 'IN' },
               sameAs: ['https://github.com/viren-pandey', 'https://www.linkedin.com/company/vian-software-solutions'],
               contactPoint: { '@type': 'ContactPoint', contactType: 'sales', email: 'support@viannn.online', availableLanguage: ['English', 'Hindi'] },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'Vian Software Solutions',
+              url: 'https://www.viannn.online',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: { '@type': 'EntryPoint', urlTemplate: 'https://www.viannn.online/search?q={search_term_string}' },
+                'query-input': 'required name=search_term_string',
+              },
             }),
           }}
         />

@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Payment Policy',
   description: 'Payment policy for Vian Software Solutions services, including accepted methods, invoicing, taxes, and late payment terms.',
+  keywords: ['payment policy', 'payment terms', 'invoicing', 'gst', 'payment methods', 'software payment india'],
+  openGraph: {
+    title: 'Payment Policy - Vian Software Solutions',
+    description: 'Payment policy for Vian Software Solutions services, including accepted methods, invoicing, taxes, and late payment terms.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Payment Policy - Vian Software Solutions',
+    description: 'Payment policy for Vian Software Solutions services, including accepted methods, invoicing, taxes, and late payment terms.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/payment-policy`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function PaymentPolicyPage() {

@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'How Vian Software Solutions collects, uses, stores, and protects your personal information.',
+  keywords: ['privacy policy', 'data protection', 'personal information', 'vian privacy', 'data privacy', 'privacy policy india'],
+  openGraph: {
+    title: 'Privacy Policy - Vian Software Solutions',
+    description: 'How Vian Software Solutions collects, uses, stores, and protects your personal information.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Privacy Policy - Vian Software Solutions',
+    description: 'How Vian Software Solutions collects, uses, stores, and protects your personal information.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/privacy-policy`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function PrivacyPolicyPage() {
@@ -174,6 +193,10 @@ export default function PrivacyPolicyPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Legal', item: '/legal' }, { name: 'Privacy Policy', item: '/legal/privacy-policy' }])) }}
+      />
     </>
   )
 }

@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Our Process',
   description: 'Learn how Vian Software Solutions delivers projects — from discovery to deployment and ongoing support.',
+  keywords: ['software development process', 'project delivery', 'development lifecycle', 'software methodology', 'project management process', 'custom development workflow'],
+  openGraph: {
+    title: 'Our Process - Vian Software Solutions',
+    description: 'Learn how Vian Software Solutions delivers projects — from discovery to deployment and ongoing support.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Our Process - Vian Software Solutions',
+    description: 'Learn how Vian Software Solutions delivers projects — from discovery to deployment and ongoing support.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/process`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const steps = [
@@ -112,6 +131,10 @@ export default function ProcessPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Process', item: '/process' }])) }}
+      />
     </>
   )
 }

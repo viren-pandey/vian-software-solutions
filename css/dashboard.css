@@ -535,9 +535,22 @@
   color: var(--text-tertiary);
 }
 
+/* ======= GRID 2 ======= */
+.dash-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
 /* ======= RESPONSIVE ======= */
 @media (max-width: 1024px) {
   .dash-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-grid-2 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .dash-grid-2 { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -545,4 +558,16 @@
   .dash-welcome { flex-direction: column; text-align: center; }
   .dash-header-bar { padding: 10px 16px; flex-wrap: wrap; }
   .dash-header-bar .dash-search { max-width: 100%; order: 10; }
+}
+
+/* Touch-friendly mobile admin */
+@media (max-width: 768px) {
+  .dash-sidebar { display: none; }
+  .dash-main-area { margin-left: 0 !important; }
+  .dash-content { padding: 16px; }
+  .dash-table th, .dash-table td { padding: 8px 10px; font-size: 12px; }
+  .dash-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dash-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .dash-nav-item { padding: 10px 10px; min-height: 40px; }
+  .dash-icon-btn { width: 40px; height: 40px; }
 }

@@ -1,10 +1,29 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { products } from '@/lib/products'
+import { siteUrl, breadcrumbJsonLd, serviceJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Services',
   description: 'Custom software development, web development, automation, AI integration, and digital growth services from Vian Software Solutions.',
+  keywords: ['web development', 'software development', 'automation services', 'ai integration', 'technology consulting', 'digital growth', 'custom software services'],
+  openGraph: {
+    title: 'Services - Vian Software Solutions',
+    description: 'Custom software development, web development, automation, AI integration, and digital growth services from Vian Software Solutions.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Services - Vian Software Solutions',
+    description: 'Custom software development, web development, automation, AI integration, and digital growth services from Vian Software Solutions.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/services`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const serviceCategories = [
@@ -215,6 +234,22 @@ export default function ServicesPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Services', item: '/services' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(serviceJsonLd([
+            { name: 'Web Development', description: 'Custom websites, web applications, portals, and e-commerce platforms.', url: '/services#websites' },
+            { name: 'Software Development', description: 'Custom applications, SaaS platforms, APIs, and enterprise solutions.', url: '/services#software' },
+            { name: 'Automation & AI', description: 'Workflow automation, AI integration, and intelligent process optimization.', url: '/services#automation' },
+            { name: 'Digital Growth', description: 'Technical SEO, performance optimization, analytics, and conversion rate improvement.', url: '/services#growth' },
+            { name: 'Technology Consulting', description: 'Architecture planning, stack selection, code review, and digital strategy.', url: '/services#consulting' },
+          ])),
+        }}
+      />
     </>
   )
 }

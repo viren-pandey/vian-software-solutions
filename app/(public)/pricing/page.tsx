@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Pricing',
   description: 'Our pricing approach at Vian Software Solutions. Every project is scoped and quoted individually based on your specific requirements.',
+  keywords: ['software pricing', 'project quotation', 'fixed price software', 'milestone payment', 'software development cost', 'custom software quote'],
+  openGraph: {
+    title: 'Pricing - Vian Software Solutions',
+    description: 'Our pricing approach at Vian Software Solutions. Every project is scoped and quoted individually based on your specific requirements.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pricing - Vian Software Solutions',
+    description: 'Our pricing approach at Vian Software Solutions. Every project is scoped and quoted individually based on your specific requirements.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/pricing`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function PricingPage() {
@@ -98,6 +117,10 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Pricing', item: '/pricing' }])) }}
+      />
     </>
   )
 }

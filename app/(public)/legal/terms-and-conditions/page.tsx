@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Terms & Conditions',
   description: 'Terms and Conditions governing the use of Vian Software Solutions website, services, software, platforms, and products.',
+  keywords: ['terms and conditions', 'terms of service', 'software agreement', 'vian terms', 'service terms india', 'website terms'],
+  openGraph: {
+    title: 'Terms & Conditions - Vian Software Solutions',
+    description: 'Terms and Conditions governing the use of Vian Software Solutions website, services, software, platforms, and products.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Terms & Conditions - Vian Software Solutions',
+    description: 'Terms and Conditions governing the use of Vian Software Solutions website, services, software, platforms, and products.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/terms-and-conditions`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function TermsPage() {

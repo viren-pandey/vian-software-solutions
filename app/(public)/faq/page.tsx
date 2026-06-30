@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl, breadcrumbJsonLd, faqJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'FAQ',
   description: 'Frequently asked questions about Vian Software Solutions — services, process, pricing, and support.',
+  keywords: ['frequently asked questions', 'software company faq', 'vian help', 'pricing questions', 'development faq', 'custom software questions'],
+  openGraph: {
+    title: 'FAQ - Vian Software Solutions',
+    description: 'Frequently asked questions about Vian Software Solutions — services, process, pricing, and support.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FAQ - Vian Software Solutions',
+    description: 'Frequently asked questions about Vian Software Solutions — services, process, pricing, and support.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/faq`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const faqSections = [
@@ -181,6 +200,18 @@ export default function FAQPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'FAQ', item: '/faq' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd(
+            faqSections.flatMap(s => s.questions)
+          )),
+        }}
+      />
     </>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { siteUrl } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,18 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Blog - Vian Software Solutions',
     description: 'Expert insights on software development, automation, and digital growth from the Vian team.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Blog - Vian Software Solutions',
+    description: 'Expert insights on software development, automation, and digital growth from the Vian team.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/blog`,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 

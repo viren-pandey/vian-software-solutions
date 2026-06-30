@@ -1,10 +1,29 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { products } from '@/lib/products'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Ready-Made Products',
   description: 'Pre-built scripts, dashboards, APIs, and tools available for instant purchase from Vian Software Solutions.',
+  keywords: ['pre-built scripts', 'digital products', 'ready-made software', 'scripts and tools', 'instant download software', 'software products india'],
+  openGraph: {
+    title: 'Products - Vian Software Solutions',
+    description: 'Pre-built scripts, dashboards, APIs, and tools available for instant purchase from Vian Software Solutions.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Products - Vian Software Solutions',
+    description: 'Pre-built scripts, dashboards, APIs, and tools available for instant purchase from Vian Software Solutions.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/products`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const categories = [...new Set(products.map(p => p.category))]
@@ -67,6 +86,10 @@ export default function ProductsPage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'Products', item: '/products' }])) }}
+      />
     </>
   )
 }

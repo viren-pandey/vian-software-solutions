@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Disclaimer',
   description: 'Disclaimer and limitation of liability for Vian Software Solutions website, services, and digital products.',
+  keywords: ['disclaimer', 'liability disclaimer', 'software disclaimer', 'website disclaimer', 'service disclaimer', 'vian disclaimer'],
+  openGraph: {
+    title: 'Disclaimer - Vian Software Solutions',
+    description: 'Disclaimer and limitation of liability for Vian Software Solutions website, services, and digital products.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Disclaimer - Vian Software Solutions',
+    description: 'Disclaimer and limitation of liability for Vian Software Solutions website, services, and digital products.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/disclaimer`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function DisclaimerPage() {

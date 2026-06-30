@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Cookie Policy',
   description: 'How Vian Software Solutions uses cookies and similar tracking technologies on its website.',
+  keywords: ['cookie policy', 'cookies', 'tracking technologies', 'website cookies', 'cookie consent', 'browser cookies'],
+  openGraph: {
+    title: 'Cookie Policy - Vian Software Solutions',
+    description: 'How Vian Software Solutions uses cookies and similar tracking technologies on its website.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cookie Policy - Vian Software Solutions',
+    description: 'How Vian Software Solutions uses cookies and similar tracking technologies on its website.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/cookie-policy`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function CookiePolicyPage() {

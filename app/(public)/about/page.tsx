@@ -1,9 +1,28 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { siteUrl, breadcrumbJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'About',
   description: 'Learn about Vian Software Solutions — our mission, values, business model, and development process.',
+  keywords: ['about vian software', 'mumbai software company', 'software development team', 'custom software solutions', 'technology partner mumbai'],
+  openGraph: {
+    title: 'About - Vian Software Solutions',
+    description: 'Learn about Vian Software Solutions — our mission, values, business model, and development process.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About - Vian Software Solutions',
+    description: 'Learn about Vian Software Solutions — our mission, values, business model, and development process.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/about`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function AboutPage() {
@@ -96,6 +115,25 @@ export default function AboutPage() {
           <Link href="/contact" className="btn btn-primary btn-lg">Start a Project</Link>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd([{ name: 'Home', item: '/' }, { name: 'About', item: '/about' }])) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'Vian Software Solutions',
+            url: siteUrl,
+            description: 'Vian Software Solutions is a Mumbai-based software company founded to help businesses build reliable, scalable digital solutions.',
+            foundingDate: '2022',
+            founder: { '@type': 'Person', name: 'Viren Pandey' },
+            address: { '@type': 'PostalAddress', addressLocality: 'Mumbai', addressRegion: 'Maharashtra', addressCountry: 'IN' },
+          }),
+        }}
+      />
     </>
   )
 }

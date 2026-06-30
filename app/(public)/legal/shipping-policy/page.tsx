@@ -1,8 +1,27 @@
 import type { Metadata } from 'next'
+import { siteUrl } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Delivery Policy',
   description: 'Delivery policy for Vian Software Solutions digital services, project deliverables, and electronic transfers.',
+  keywords: ['delivery policy', 'digital delivery', 'software delivery', 'project deliverables', 'electronic transfer', 'vian delivery'],
+  openGraph: {
+    title: 'Delivery Policy - Vian Software Solutions',
+    description: 'Delivery policy for Vian Software Solutions digital services, project deliverables, and electronic transfers.',
+    images: [{ url: `${siteUrl}/assets/logo/og-image.png` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Delivery Policy - Vian Software Solutions',
+    description: 'Delivery policy for Vian Software Solutions digital services, project deliverables, and electronic transfers.',
+  },
+  alternates: {
+    canonical: `${siteUrl}/legal/shipping-policy`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function ShippingPolicyPage() {
