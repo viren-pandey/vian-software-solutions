@@ -1,5 +1,6 @@
 import { getAuthUser, getAuthCookie } from '@/lib/auth'
 import { createServerApi } from '@/lib/api'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { QuotationsList } from '@/components/dashboard/QuotationsList'
 
@@ -11,7 +12,7 @@ export default async function QuotationsPage() {
 
   const [quotations, services] = await Promise.all([
     api.quotations.list().catch(() => []),
-    api.services.list().catch(() => []),
+    prisma.service.findMany({ orderBy: { name: 'asc' } }).catch(() => []),
   ])
 
   return <QuotationsList quotations={quotations} services={services} />

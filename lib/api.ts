@@ -37,11 +37,11 @@ async function request<T>(
     const res = await fetch(url, {
       credentials: 'include',
       signal: controller.signal,
+      ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string> || {}),
       },
-      ...options,
     })
 
     const data = await res.json()
