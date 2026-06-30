@@ -2,8 +2,8 @@ export type UserRole = 'admin' | 'reviewer' | 'client'
 
 export type QuotationStatus =
   | 'SUBMITTED' | 'UNDER_REVIEW' | 'QUOTED'
-  | 'REVISION_REQUESTED' | 'ACCEPTED' | 'INVOICED'
-  | 'PAID' | 'REJECTED' | 'CANCELLED'
+  | 'REVISION_REQUESTED' | 'ACCEPTED' | 'PAYMENT_REQUESTED'
+  | 'INVOICED' | 'PAID' | 'REJECTED' | 'CANCELLED'
 
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'cancelled'
 
@@ -171,7 +171,8 @@ export const QUOTATION_TRANSITIONS: Record<QuotationStatus, QuotationStatus[]> =
   UNDER_REVIEW: ['QUOTED', 'REVISION_REQUESTED', 'CANCELLED'],
   QUOTED: ['ACCEPTED', 'REJECTED', 'REVISION_REQUESTED'],
   REVISION_REQUESTED: ['UNDER_REVIEW', 'CANCELLED'],
-  ACCEPTED: ['INVOICED'],
+  ACCEPTED: ['PAYMENT_REQUESTED'],
+  PAYMENT_REQUESTED: ['INVOICED'],
   INVOICED: ['PAID'],
   PAID: [],
   REJECTED: [],

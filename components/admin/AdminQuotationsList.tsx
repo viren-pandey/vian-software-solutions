@@ -57,7 +57,7 @@ export function AdminQuotationsList({ quotations }: AdminQuotationsListProps) {
         >
           All
         </button>
-        {(['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'ACCEPTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED'] as QuotationStatus[]).map((s) => (
+        {(['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'ACCEPTED', 'PAYMENT_REQUESTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED'] as QuotationStatus[]).map((s) => (
           <button
             key={s}
             className={`btn ${statusFilter === s ? 'btn-primary' : 'btn-secondary'}`}
@@ -72,7 +72,7 @@ export function AdminQuotationsList({ quotations }: AdminQuotationsListProps) {
       {selected.size > 0 && (
         <div style={{ marginBottom: 12, padding: 8, background: 'var(--surface-hover)', borderRadius: 'var(--radius)', display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 13 }}>{selected.size} selected</span>
-          {(['UNDER_REVIEW', 'QUOTED', 'ACCEPTED', 'CANCELLED'] as QuotationStatus[]).map((s) => (
+          {(['UNDER_REVIEW', 'QUOTED', 'ACCEPTED', 'PAYMENT_REQUESTED', 'CANCELLED'] as QuotationStatus[]).map((s) => (
             <button
               key={s}
               className="btn btn-secondary"
@@ -139,7 +139,7 @@ export function AdminQuotationsList({ quotations }: AdminQuotationsListProps) {
                       <><br /><span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{q.service.name}</span></>
                     )}
                   </td>
-                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
                   <td>

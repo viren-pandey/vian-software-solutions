@@ -80,7 +80,7 @@ export function QuotationsList({ quotations, services }: QuotationsListProps) {
                 >
                   <td><strong>{q.title}</strong></td>
                   <td>{q.service?.name || '-'}</td>
-                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
                   <td>
@@ -94,6 +94,15 @@ export function QuotationsList({ quotations, services }: QuotationsListProps) {
                         View Invoice
                       </Link>
                     ) : q.status === 'INVOICED' && q.invoice ? (
+                      <Link
+                        href={`/dashboard/invoices/${q.invoice.id}`}
+                        className="btn btn-primary"
+                        style={{ padding: '2px 8px', fontSize: 11, textDecoration: 'none' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Pay Now
+                      </Link>
+                    ) : q.status === 'PAYMENT_REQUESTED' && q.invoice ? (
                       <Link
                         href={`/dashboard/invoices/${q.invoice.id}`}
                         className="btn btn-primary"

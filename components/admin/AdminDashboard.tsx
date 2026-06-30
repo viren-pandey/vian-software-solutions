@@ -125,7 +125,7 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
                   <td>{q.user?.name || 'Unknown'}</td>
                   <td><strong>{q.title}</strong></td>
                   <td>{q.service?.name || '-'}</td>
-                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
                 </tr>
@@ -159,7 +159,7 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
                     <td>{q.user?.name || 'Unknown'}</td>
                     <td><strong>{q.title}</strong></td>
                     <td>{q.service?.name || '-'}</td>
-                    <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                    <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                     <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                     <td>{formatDate(q.createdAt)}</td>
                   </tr>

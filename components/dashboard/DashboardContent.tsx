@@ -179,7 +179,7 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
                 <tr key={q.id} className="clickable" onClick={() => window.location.href = `/dashboard/quotations/${q.id}`}>
                   <td><strong>{q.title}</strong></td>
                   <td>{q.service?.name || '-'}</td>
-                  <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                   <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                   <td>{formatDate(q.createdAt)}</td>
                 </tr>
@@ -212,7 +212,7 @@ export function DashboardContent({ user, quotations, projects, invoices }: Dashb
                   <tr key={q.id} className="clickable" onClick={() => window.location.href = `/dashboard/quotations/${q.id}`}>
                     <td><strong>{q.title}</strong></td>
                     <td>{q.service?.name || '-'}</td>
-                    <td>{q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
+                  <td>{q.quotedAmount != null ? formatCurrency(Number(q.quotedAmount)) : '-'}</td>
                     <td><Badge variant={q.status}>{q.status.replace(/_/g, ' ')}</Badge></td>
                     <td>{formatDate(q.createdAt)}</td>
                   </tr>

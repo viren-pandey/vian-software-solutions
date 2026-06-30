@@ -651,7 +651,7 @@ export default async function handler(req: any, res: any) {
       if (!requireAdmin(user, res)) return
       const id = adminQuotationPutMatch[1]
       const { status, quotedAmount, quoteValidityDays, notes } = body
-      const validStatuses = ['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'REVISION_REQUESTED', 'ACCEPTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED']
+      const validStatuses = ['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'REVISION_REQUESTED', 'ACCEPTED', 'PAYMENT_REQUESTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED']
       if (status && !validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' })
       const updateData: any = {}
       if (status) updateData.status = status
@@ -664,17 +664,20 @@ export default async function handler(req: any, res: any) {
         quotationId: id, title: quotation.title, status: status || quotation.status,
         message: `Your quotation "${quotation.title}" has been updated to ${(status || quotation.status).replace(/_/g, ' ')}.`,
       })
-      // If accepted, create invoice + project
-      if (status === 'ACCEPTED') {
+      // If accepted or payment requested, create invoice + project
+      if (status === 'ACCEPTED' || status === 'PAYMENT_REQUESTED') {
         const q = await prisma.quotation.findUnique({ where: { id }, include: { invoice: true, project: true } })
         if (q && !q.invoice) {
+          if (!q.quotedAmount) {
+            return res.status(400).json({ error: 'Quoted amount must be set before requesting payment' })
+          }
           const invoiceCount = await prisma.invoice.count()
           const invoice = await prisma.invoice.create({
             data: {
               quotationId: id,
               userId: q.userId,
               invoiceNumber: `INV-${String(invoiceCount + 1).padStart(4, '0')}`,
-              amount: q.quotedAmount || 0,
+              amount: q.quotedAmount,
             },
           })
           await createNotification(q.userId, 'invoice_created', {
@@ -901,7 +904,11 @@ export default async function handler(req: any, res: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: paytmBody, head: { signature } }),
       })
-      const paytmData = await paytmRes.json()
+      const paytmText = await paytmRes.text()
+      let paytmData: any
+      try { paytmData = JSON.parse(paytmText) } catch {
+        return res.status(502).json({ error: 'Invalid response from payment gateway', detail: paytmText.slice(0, 500) })
+      }
 
       if (paytmData.body?.resultInfo?.resultStatus !== 'S') {
         return res.status(502).json({ error: paytmData.body?.resultInfo?.resultMsg || 'Failed to create Paytm order' })
@@ -1244,7 +1251,11 @@ export default async function handler(req: any, res: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: paytmBody, head: { signature } }),
       })
-      const paytmData = await paytmRes.json()
+      const paytmText = await paytmRes.text()
+      let paytmData: any
+      try { paytmData = JSON.parse(paytmText) } catch {
+        return res.status(502).json({ error: 'Invalid response from payment gateway', detail: paytmText.slice(0, 500) })
+      }
 
       if (paytmData.body?.resultInfo?.resultStatus !== 'S') {
         return res.status(502).json({ error: paytmData.body?.resultInfo?.resultMsg || 'Failed to create Paytm order' })

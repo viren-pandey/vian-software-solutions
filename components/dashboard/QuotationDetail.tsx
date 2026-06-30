@@ -150,7 +150,7 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
         {q.preferredTechnologies?.length > 0 && (
           <DetailCard label="Technologies" value={q.preferredTechnologies.join(', ')} />
         )}
-        {q.quotedAmount && (
+        {q.quotedAmount != null && (
           <DetailCard label="Quoted Amount" value={formatCurrency(Number(q.quotedAmount))} />
         )}
       </div>
@@ -191,6 +191,22 @@ export function QuotationDetail({ quotation, userId }: QuotationDetailProps) {
           {q.invoice && (
             <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
               Pay Invoice
+            </Link>
+          )}
+        </div>
+      )}
+
+      {q.status === 'PAYMENT_REQUESTED' && (
+        <div style={{ marginBottom: 24, padding: 20, border: '2px solid var(--accent)', borderRadius: 'var(--radius-lg)', background: 'rgba(var(--accent-rgb),0.05)' }}>
+          <h3 style={{ marginBottom: 8 }}>Payment Requested</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            {q.invoice
+              ? `Invoice #${q.invoice.invoiceNumber} for ${q.quotedAmount ? formatCurrency(Number(q.quotedAmount)) : ''} is ready. Please complete your payment.`
+              : 'Payment has been requested. An invoice will be generated shortly.'}
+          </p>
+          {q.invoice && (
+            <Link href={`/dashboard/invoices/${q.invoice.id}`} className="btn btn-primary">
+              Pay Now
             </Link>
           )}
         </div>
