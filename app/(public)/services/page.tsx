@@ -233,7 +233,7 @@ export default function ServicesPage() {
                 <p className="product-page-desc">{product.desc}</p>
                 <div className="product-page-footer">
                   <div className="product-page-price">
-                    <span className="product-page-currency">₹</span>
+                    <span className="product-page-currency">Rs.</span>
                     <span className="product-page-amount">{product.price.toLocaleString('en-IN')}</span>
                   </div>
                   <Link href={`/products/${product.id}`} className="btn btn-dark btn-block">Buy Now</Link>
@@ -242,7 +242,7 @@ export default function ServicesPage() {
             ))}
           </div>
           <div style={{ textAlign: 'center', marginTop: 32 }}>
-            <Link href="/products" className="btn btn-secondary">View All Products →</Link>
+            <Link href="/products" className="btn btn-secondary">All Products</Link>
           </div>
         </div>
       </section>
