@@ -522,3 +522,18 @@
     padding: 4px 10px;
   }
 }
+
+@media (max-width: 768px) {
+  .dash-layout { flex-direction: column; }
+  .admin-layout { flex-direction: column; }
+  .dash-main { padding: 16px; padding-bottom: 80px; }
+  .admin-main { padding: 16px; padding-bottom: 80px; }
+  .chat-layout { flex-direction: column; height: auto; max-height: none; }
+  .chat-list { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 200px; }
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .currency-select { min-width: 100%; }
+  .filter-input { max-width: 100%; }
+  .modal-overlay { padding: 12px; align-items: flex-end; }
+  .modal { max-width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 28px 20px 20px; }
+  .modal-close { top: 8px; right: 12px; }
+}

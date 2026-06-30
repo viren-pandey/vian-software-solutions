@@ -147,51 +147,51 @@ export default function ContactPage() {
           <div className="section-head">
             <h2>Frequently asked.</h2>
           </div>
-          <div className="faq-item">
-            <div className="faq-question">
+          <details className="faq-item">
+            <summary className="faq-question">
               <span>How do I start a project?</span>
-              <span>+</span>
-            </div>
+              <span className="faq-toggle" aria-hidden="true">+</span>
+            </summary>
             <div className="faq-answer">
               <p>Send us a message through the contact form or email us directly. We will schedule a call to understand your requirements, then provide a detailed quotation within 24 hours.</p>
             </div>
-          </div>
-          <div className="faq-item">
-            <div className="faq-question">
+          </details>
+          <details className="faq-item">
+            <summary className="faq-question">
               <span>What information do you need for a quotation?</span>
-              <span>+</span>
-            </div>
+              <span className="faq-toggle" aria-hidden="true">+</span>
+            </summary>
             <div className="faq-answer">
               <p>Tell us about your project goals, preferred technologies (if any), timeline expectations, and budget range. The more detail you provide, the more accurate your quotation will be.</p>
             </div>
-          </div>
-          <div className="faq-item">
-            <div className="faq-question">
+          </details>
+          <details className="faq-item">
+            <summary className="faq-question">
               <span>What happens after I accept a quotation?</span>
-              <span>+</span>
-            </div>
+              <span className="faq-toggle" aria-hidden="true">+</span>
+            </summary>
             <div className="faq-answer">
               <p>We will generate an invoice for the initial milestone. Once payment is confirmed, we begin work. You will receive access to your project dashboard where you can track progress, communicate with the team, and review deliverables.</p>
             </div>
-          </div>
-          <div className="faq-item">
-            <div className="faq-question">
+          </details>
+          <details className="faq-item">
+            <summary className="faq-question">
               <span>Can I make changes after the project starts?</span>
-              <span>+</span>
-            </div>
+              <span className="faq-toggle" aria-hidden="true">+</span>
+            </summary>
             <div className="faq-answer">
               <p>Yes. Minor changes are accommodated within the existing scope. Significant changes may require a change order with adjusted timeline and pricing. We discuss all changes upfront so there are no surprises.</p>
             </div>
-          </div>
-          <div className="faq-item">
-            <div className="faq-question">
+          </details>
+          <details className="faq-item">
+            <summary className="faq-question">
               <span>What payment methods do you accept?</span>
-              <span>+</span>
-            </div>
+              <span className="faq-toggle" aria-hidden="true">+</span>
+            </summary>
             <div className="faq-answer">
               <p>We accept bank transfers, UPI, credit/debit cards, Paytm, and Razorpay. All payments are processed through secure, PCI-compliant gateways.</p>
             </div>
-          </div>
+          </details>
         </div>
       </section>
       <script

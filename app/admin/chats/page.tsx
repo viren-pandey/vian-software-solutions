@@ -10,7 +10,10 @@ export default async function AdminChatsPage() {
   const cookie = await getAuthCookie()
   const api = createServerApi(cookie)
 
-  const chats = await api.admin.chats.list().catch(() => [])
+  const [chats, users] = await Promise.all([
+    api.admin.chats.list().catch(() => []),
+    api.admin.users().catch(() => []),
+  ])
 
-  return <AdminChats chats={chats} userId={user.id} />
+  return <AdminChats chats={chats} users={users} userId={user.id} />
 }

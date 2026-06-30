@@ -124,4 +124,47 @@
 
   .contact-form .form-row { grid-template-columns: 1fr; }
   .faq-section { margin-bottom: 8px; }
+  .faq-category { padding: 14px 0; }
+  .faq-question { padding: 12px 14px; font-size: 14px; }
+  .faq-answer { padding: 0 14px 12px; }
+  .page-hero { padding: 40px 0 24px; }
+  .page-hero h1 { font-size: 24px; }
+  .breadcrumb { font-size: 12px; flex-wrap: wrap; }
+  .cta-banner { padding: 28px 20px; }
+  .cta-banner h2 { font-size: 20px; }
+  .pill-row { gap: 4px; }
+  .data-table th, .data-table td { padding: 8px; font-size: 12px; }
+  .filter-bar { gap: 4px; }
+  .filter-btn { font-size: 11px; padding: 4px 10px; }
+  .service-detail-header { flex-direction: column; gap: 12px; }
+  .service-icon { font-size: 28px; }
+  .dash-content { padding: 12px !important; }
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .admin-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .dash-header-bar { padding: 8px 12px !important; }
+  .dash-header-bar .dash-search input { font-size: 12px; padding: 6px 10px 6px 30px; }
+  .dash-welcome { padding: 20px; }
+  .dash-welcome h2 { font-size: 17px; }
+  .dash-card { padding: 16px; }
+  .modal { padding: 24px 20px 20px; }
+  .modal-overlay { padding: 12px; align-items: flex-end; }
+  .modal-icon { font-size: 32px; }
+}
+
+@media (max-width: 380px) {
+  h1 { font-size: 24px; }
+  h2 { font-size: 19px; }
+  .section { padding: 36px 0; }
+  .page-hero h1 { font-size: 21px; }
+  .breadcrumb { font-size: 11px; }
+  .hero-copy h1 { font-size: clamp(30px, 12vw, 42px); }
+  .hero-copy .lead { font-size: 15px; }
+  .card { padding: 18px; }
+  .nav-links a { padding: 10px 12px; font-size: 12px; }
+  .dash-stats-grid { gap: 10px; }
+  .dash-stat-card { padding: 14px 16px; }
+  .dash-stat-card .stat-value { font-size: 22px; }
+  .dash-table th, .dash-table td { padding: 6px 8px; font-size: 11px; }
+  .product-page-card { padding: 18px; }
+  .product-page-amount { font-size: 18px; }
 }

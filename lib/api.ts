@@ -1,8 +1,14 @@
 import type {
   User, Service, Quotation, Project, Invoice, Payment,
   Message, Attachment, SupportTicket, Notification,
-  AdminStats, ChatListItem, AuditLogEntry,
+  AdminStats, ChatListItem, AuditLogEntry, PaymentRequest,
+  PaymentLogEntry,
 } from '@/types/api'
+
+interface StartChatInput {
+  userId: string
+  title: string
+}
 
 export class ApiError extends Error {
   constructor(
@@ -100,6 +106,8 @@ function createApi(extraHeaders: Record<string, string> = {}) {
       createOrder: (invoiceId: string) =>
         request<{ orderId: string; txnToken: string; amount: string; mid: string; env: string }>(
           '/api/payments/create-order', h({ method: 'POST', body: JSON.stringify({ invoiceId }) })),
+      initiate: (invoiceId: string) =>
+        request<{ ok: boolean }>('/api/payments/initiate', h({ method: 'POST', body: JSON.stringify({ invoiceId }) })),
     },
     support: {
       list: () => request<SupportTicket[]>('/api/support/tickets', h()),
@@ -134,6 +142,18 @@ function createApi(extraHeaders: Record<string, string> = {}) {
       },
       chats: {
         list: () => request<ChatListItem[]>('/api/admin/chats', h()),
+        start: (data: StartChatInput) =>
+          request<Quotation>('/api/admin/chats/start', h({ method: 'POST', body: JSON.stringify(data) })),
+      },
+      paymentRequests: {
+        list: () => request<PaymentRequest[]>('/api/admin/payment-requests', h()),
+        create: (data: { userId: string; amount: number; description: string }) =>
+          request<PaymentRequest>('/api/admin/payment-requests', h({ method: 'POST', body: JSON.stringify(data) })),
+        cancel: (id: string) =>
+          request<PaymentRequest>(`/api/admin/payment-requests/${id}/cancel`, h({ method: 'POST' })),
+      },
+      paymentLogs: {
+        list: () => request<PaymentLogEntry[]>('/api/admin/payment-logs', h()),
       },
       auditLog: {
         list: (limit = 100, offset = 0) =>

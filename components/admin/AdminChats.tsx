@@ -6,14 +6,16 @@ import { Badge } from '@/components/ui/Badge'
 import { api, ApiError } from '@/lib/api'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { showToast } from '@/components/ui/Toast'
-import type { ChatListItem, Quotation, Message } from '@/types/api'
+import type { ChatListItem, Quotation, Message, User } from '@/types/api'
+import { Plus, Search, X } from 'lucide-react'
 
 interface AdminChatsProps {
   chats: ChatListItem[]
   userId: string
+  users: User[]
 }
 
-export function AdminChats({ chats, userId }: AdminChatsProps) {
+export function AdminChats({ chats, userId, users }: AdminChatsProps) {
   const router = useRouter()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [activeChatData, setActiveChatData] = useState<Quotation | null>(null)
@@ -21,7 +23,17 @@ export function AdminChats({ chats, userId }: AdminChatsProps) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showNewChat, setShowNewChat] = useState(false)
+  const [newChatSearch, setNewChatSearch] = useState('')
+  const [newChatUserId, setNewChatUserId] = useState('')
+  const [newChatTitle, setNewChatTitle] = useState('')
+  const [creating, setCreating] = useState(false)
   const msgEndRef = useRef<HTMLDivElement>(null)
+
+  const filteredUsers = users.filter(
+    (u) => u.name.toLowerCase().includes(newChatSearch.toLowerCase()) || u.email.toLowerCase().includes(newChatSearch.toLowerCase())
+  )
+  const selectedUser = users.find((u) => u.id === newChatUserId)
 
   const loadChat = async (quotationId: string) => {
     setActiveChatId(quotationId)
@@ -54,10 +66,32 @@ export function AdminChats({ chats, userId }: AdminChatsProps) {
     setSending(false)
   }
 
+  const handleStartChat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newChatUserId || !newChatTitle.trim()) return
+    setCreating(true)
+    try {
+      const q = await api.admin.chats.start({ userId: newChatUserId, title: newChatTitle.trim() })
+      showToast('Chat started', 'success')
+      setShowNewChat(false)
+      setNewChatUserId('')
+      setNewChatTitle('')
+      setNewChatSearch('')
+      router.refresh()
+      await loadChat(q.id)
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Failed to start chat', 'error')
+    }
+    setCreating(false)
+  }
+
   return (
     <>
       <div className="admin-header" style={{ marginBottom: 0 }}>
         <div><h1>Chats</h1></div>
+        <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowNewChat(true)}>
+          <Plus size={16} /> New Chat
+        </button>
       </div>
       <div className="chat-layout">
         <div className="chat-list">
@@ -185,6 +219,75 @@ export function AdminChats({ chats, userId }: AdminChatsProps) {
           ) : null}
         </div>
       </div>
+
+      {showNewChat && (
+        <div className="modal-overlay" onClick={() => setShowNewChat(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'left', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3>Start New Chat</h3>
+              <button className="btn btn-secondary" style={{ padding: '4px 8px' }} onClick={() => setShowNewChat(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleStartChat}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Select User</label>
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={newChatSearch}
+                    onChange={(e) => setNewChatSearch(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px 8px 32px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }}
+                  />
+                </div>
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                  {filteredUsers.length === 0 ? (
+                    <div style={{ padding: 12, textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>No users found</div>
+                  ) : (
+                    filteredUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        style={{
+                          padding: '8px 12px', cursor: 'pointer', fontSize: 13,
+                          background: newChatUserId === u.id ? 'var(--accent-light)' : 'transparent',
+                          borderBottom: '1px solid var(--border-light)',
+                        }}
+                        onClick={() => { setNewChatUserId(u.id); setNewChatSearch(u.name) }}
+                      >
+                        <strong>{u.name}</strong> <span style={{ color: 'var(--text-tertiary)' }}>{u.email}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {selectedUser && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--accent)' }}>
+                    Selected: {selectedUser.name}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Subject</label>
+                <input
+                  type="text"
+                  value={newChatTitle}
+                  onChange={(e) => setNewChatTitle(e.target.value)}
+                  placeholder="e.g. Project discussion"
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14 }}
+                  required
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowNewChat(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={creating || !newChatUserId || !newChatTitle.trim()}>
+                  {creating ? 'Creating...' : 'Start Chat'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   )
 }

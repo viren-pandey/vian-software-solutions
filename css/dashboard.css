@@ -565,9 +565,20 @@
   .dash-sidebar { display: none; }
   .dash-main-area { margin-left: 0 !important; }
   .dash-content { padding: 16px; }
+  .dash-table { min-width: 500px; }
   .dash-table th, .dash-table td { padding: 8px 10px; font-size: 12px; }
   .dash-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .dash-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .dash-nav-item { padding: 10px 10px; min-height: 40px; }
   .dash-icon-btn { width: 40px; height: 40px; }
+}
+
+@media (max-width: 480px) {
+  .dash-table th, .dash-table td { padding: 6px 8px; font-size: 11px; }
+  .dash-table-wrap { border-radius: 6px; }
+  .dash-stat-card .stat-value { font-size: 22px; }
+  .dash-stat-card .stat-icon { width: 32px; height: 32px; font-size: 14px; }
+  .dash-header-bar { padding: 8px 12px; }
+  .dash-header-bar .dash-search { max-width: 100%; }
+  .dash-section-header h3 { font-size: 14px; }
 }

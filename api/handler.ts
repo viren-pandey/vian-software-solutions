@@ -249,6 +249,30 @@ export default async function handler(req: any, res: any) {
       return res.json({ user })
     }
 
+    if (path === '/api/auth/update' && req.method === 'PUT') {
+      if (!requireAuth(user, res)) return
+      const { name: newName, email: newEmail, currentPassword, newPassword: newPass } = body
+      const updates: any = {}
+      if (newName) updates.name = newName
+      if (newEmail) {
+        const existing = await prisma.user.findUnique({ where: { email: newEmail } })
+        if (existing && existing.id !== user.id) return res.status(409).json({ error: 'Email already in use' })
+        updates.email = newEmail
+      }
+      if (newPass) {
+        if (!currentPassword) return res.status(400).json({ error: 'Current password is required to set a new password' })
+        if (newPass.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+        const u = await prisma.user.findUnique({ where: { id: user.id } })
+        if (!u) return res.status(404).json({ error: 'User not found' })
+        const valid = await bcrypt.compare(currentPassword, u.passwordHash)
+        if (!valid) return res.status(400).json({ error: 'Current password is incorrect' })
+        updates.passwordHash = await bcrypt.hash(newPass, 12)
+      }
+      if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No fields to update' })
+      await prisma.user.update({ where: { id: user.id }, data: updates })
+      return res.json({ ok: true })
+    }
+
     if (path === '/api/auth/logout' && (req.method === 'POST' || req.method === 'GET')) {
       setCookies(res, [
         { name: 'access_token', value: '', maxAge: 0 },
@@ -463,6 +487,23 @@ export default async function handler(req: any, res: any) {
         include: { invoice: { include: { quotation: true } } },
       })
       return res.json(payments)
+    }
+
+    // --- Client Payment Initiate (click tracking) ---
+    if (path === '/api/payments/initiate' && req.method === 'POST') {
+      if (!requireAuth(user, res)) return
+      const { invoiceId } = body
+      if (!invoiceId) return res.status(400).json({ error: 'invoiceId is required' })
+      const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } })
+      if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
+      if (invoice.userId !== user.id) return res.status(403).json({ error: 'Forbidden' })
+      await prisma.paymentLog.create({
+        data: {
+          logType: 'initiation',
+          rawPayload: { invoiceId, userId: user.id, timestamp: new Date().toISOString() },
+        },
+      })
+      return res.json({ ok: true })
     }
 
     // --- Client Support Tickets ---
@@ -683,6 +724,28 @@ export default async function handler(req: any, res: any) {
       return res.json(chats)
     }
 
+    // --- Admin Start Direct Chat ---
+    if (path === '/api/admin/chats/start' && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const { userId: targetUserId, title } = body
+      if (!targetUserId || !title) return res.status(400).json({ error: 'userId and title are required' })
+      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } })
+      if (!targetUser) return res.status(404).json({ error: 'User not found' })
+      const service = await prisma.service.findFirst({ where: { active: true }, orderBy: { name: 'asc' } })
+      if (!service) return res.status(500).json({ error: 'No active service found' })
+      const quotation = await prisma.quotation.create({
+        data: {
+          userId: targetUserId,
+          serviceId: service.id,
+          title,
+          description: `Direct chat started by admin ${user.name}`,
+          status: 'SUBMITTED',
+        },
+      })
+      await auditLog(user.id, 'chat:start', 'quotation', quotation.id, null, { title, targetUserId })
+      return res.status(201).json(quotation)
+    }
+
     // --- Notifications ---
     if (path === '/api/notifications/stream' && req.method === 'GET') {
       const user = await getUserFromToken(req.cookies || {})
@@ -785,7 +848,7 @@ export default async function handler(req: any, res: any) {
       }
 
       await prisma.payment.create({
-        data: { invoiceId, userId: user.id, paytmTransactionId: orderId, amount: invoice.amount, status: 'pending' },
+        data: { invoiceId, userId: user.id, paytmTransactionId: orderId, amount: invoice.amount, status: 'pending', initiatedAt: new Date() },
       })
 
       return res.json({ orderId, txnToken: paytmData.body.txnToken, amount, mid: PAYTM_MID, env: PAYTM_ENV })
@@ -858,6 +921,66 @@ export default async function handler(req: any, res: any) {
         })
       }
       return res.json({ ok: true })
+    }
+
+    // --- Admin Payment Requests ---
+    if (path === '/api/admin/payment-requests' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const requests = await prisma.paymentRequest.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+      return res.json(requests)
+    }
+
+    if (path === '/api/admin/payment-requests' && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const { userId: targetUserId, amount, description } = body
+      if (!targetUserId || amount === undefined || !description) {
+        return res.status(400).json({ error: 'userId, amount, and description are required' })
+      }
+      const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } })
+      if (!targetUser) return res.status(404).json({ error: 'User not found' })
+      const request = await prisma.paymentRequest.create({
+        data: { userId: targetUserId, amount, description, status: 'pending' },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+      await notifyAdmins('payment_request_created', {
+        requestId: request.id, userId: targetUserId, amount: Number(amount), description,
+        message: `Payment request of ₹${Number(amount).toLocaleString()} created for ${targetUser.name}.`,
+      })
+      await createNotification(targetUserId, 'payment_request', {
+        requestId: request.id, amount: Number(amount), description,
+        message: `A payment request of ₹${Number(amount).toLocaleString()} has been created for you.`,
+      })
+      await auditLog(user.id, 'payment_request:create', 'payment_request', request.id, null, { userId: targetUserId, amount, description })
+      return res.status(201).json(request)
+    }
+
+    const paymentRequestCancelMatch = path.match(/^\/api\/admin\/payment-requests\/([^/]+)\/cancel$/)
+    if (paymentRequestCancelMatch && req.method === 'POST') {
+      if (!requireAdmin(user, res)) return
+      const id = paymentRequestCancelMatch[1]
+      const existing = await prisma.paymentRequest.findUnique({ where: { id } })
+      if (!existing) return res.status(404).json({ error: 'Payment request not found' })
+      const updated = await prisma.paymentRequest.update({
+        where: { id },
+        data: { status: 'cancelled' },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      })
+      await auditLog(user.id, 'payment_request:cancel', 'payment_request', id, { status: existing.status }, { status: 'cancelled' })
+      return res.json(updated)
+    }
+
+    // --- Admin Payment Logs ---
+    if (path === '/api/admin/payment-logs' && req.method === 'GET') {
+      if (!requireAdmin(user, res)) return
+      const logs = await prisma.paymentLog.findMany({
+        orderBy: { receivedAt: 'desc' },
+        take: 200,
+        include: { payment: { include: { user: { select: { id: true, name: true, email: true } } } } },
+      })
+      return res.json(logs)
     }
 
     // --- Admin Audit Log ---
