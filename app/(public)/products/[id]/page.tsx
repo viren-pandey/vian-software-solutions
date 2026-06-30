@@ -138,9 +138,9 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
-            <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
-              You will receive the product delivery at your email within 24 hours. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
-            </p>
+              <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
+                Your product files will be delivered instantly to your email after successful payment. Two pages of modification are included free of charge. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
+              </p>
           </div>
           <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/products" className="btn btn-secondary">Browse More Products</Link>
@@ -194,6 +194,10 @@ export default function CheckoutPage() {
                 <div className="checkout-total">
                   <span style={{ fontWeight: 600 }}>Total</span>
                   <span className="checkout-total-amount">Rs.{product.price.toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  <strong style={{ color: 'var(--text)', display: 'block', marginBottom: 4 }}>What you get:</strong>
+                  Instant delivery to your email after payment &middot; 2 pages of free modifications &middot; Full source code ownership
                 </div>
               </div>
             </div>

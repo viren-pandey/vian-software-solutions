@@ -237,6 +237,7 @@ export default function ServicesPage() {
                     <span className="product-page-amount">{product.price.toLocaleString('en-IN')}</span>
                   </div>
                   <Link href={`/products/${product.id}`} className="btn btn-dark btn-block">Buy Now</Link>
+                  <p className="muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 6 }}>Instant delivery &middot; 2 pages free modification</p>
                 </div>
               </div>
             ))}

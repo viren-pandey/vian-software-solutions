@@ -89,7 +89,7 @@ export default function ProductsPage() {
                   >
                     Buy Now
                   </Link>
-                  <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 6 }}>Full source code - Instant delivery</p>
+                  <p className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 6 }}>Instant delivery after payment &middot; 2 pages free modification</p>
                 </div>
               </div>
             ))}
