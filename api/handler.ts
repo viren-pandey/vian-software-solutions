@@ -146,9 +146,7 @@ async function notifyAdmins(type: string, payload: any) {
   const admins = await prisma.user.findMany({
     where: { roles: { some: { role: { in: ['admin', 'reviewer'] } } } },
   })
-  for (const a of admins) {
-    await createNotification(a.id, type, payload)
-  }
+  await Promise.all(admins.map((a) => createNotification(a.id, type, payload)))
 }
 
 export default async function handler(req: any, res: any) {
@@ -954,15 +952,15 @@ export default async function handler(req: any, res: any) {
         data: { userId: targetUserId, amount, description, status: 'pending' },
         include: { user: { select: { id: true, name: true, email: true } } },
       })
-      await notifyAdmins('payment_request_created', {
+      notifyAdmins('payment_request_created', {
         requestId: request.id, userId: targetUserId, amount: Number(amount), description,
         message: `Payment request of ₹${Number(amount).toLocaleString()} created for ${targetUser.name}.`,
-      })
-      await createNotification(targetUserId, 'payment_request', {
+      }).catch(() => {})
+      createNotification(targetUserId, 'payment_request', {
         requestId: request.id, amount: Number(amount), description,
         message: `A payment request of ₹${Number(amount).toLocaleString()} has been created for you.`,
-      })
-      await auditLog(user.id, 'payment_request:create', 'payment_request', request.id, null, { userId: targetUserId, amount, description })
+      }).catch(() => {})
+      auditLog(user.id, 'payment_request:create', 'payment_request', request.id, null, { userId: targetUserId, amount, description }).catch(() => {})
       return res.status(201).json(request)
     }
 
