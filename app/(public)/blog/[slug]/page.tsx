@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+export const dynamic = 'force-dynamic'
+
 interface BlogPost {
   id: string
   title: string
@@ -18,9 +20,13 @@ interface BlogPost {
 async function getPost(slug: string): Promise<BlogPost | null> {
   try {
     const base = process.env.NEXT_PUBLIC_API_URL || ''
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     const res = await fetch(`${base}/api/blogs/${slug}`, {
+      signal: controller.signal,
       next: { revalidate: 300 },
     })
+    clearTimeout(timeout)
     if (!res.ok) return null
     return res.json()
   } catch {

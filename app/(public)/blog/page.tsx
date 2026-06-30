@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Blog - Software Development Insights & Guides',
   description: 'Read expert insights, guides, and thought leadership on software development, web applications, automation, SEO, and digital growth from Vian Software Solutions.',
@@ -24,9 +26,13 @@ interface BlogPost {
 async function getPosts(): Promise<BlogPost[]> {
   try {
     const base = process.env.NEXT_PUBLIC_API_URL || ''
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     const res = await fetch(`${base}/api/blogs?limit=50`, {
+      signal: controller.signal,
       next: { revalidate: 300 },
     })
+    clearTimeout(timeout)
     if (!res.ok) return []
     const data = await res.json()
     return data.posts || []
