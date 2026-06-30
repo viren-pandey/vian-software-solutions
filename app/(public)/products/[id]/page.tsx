@@ -19,14 +19,29 @@ export default function CheckoutPage() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
 
-  useEffect(() => {
-    if (!document.querySelector('script[src*="paytm"]')) {
+  const loadPaytmCheckout = (mid: string, env: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const host = env === 'prod' ? 'https://secure.paytmpayments.com' : 'https://securestage.paytmpayments.com'
+      const scriptUrl = `${host}/merchantpgpui/checkoutjs/merchants/${mid}.js`
+      if (document.querySelector(`script[src="${scriptUrl}"]`)) {
+        resolve()
+        return
+      }
       const s = document.createElement('script')
-      s.src = 'https://assets.paytm.com/latest/merchant/js/checkoutJs.js'
+      s.src = scriptUrl
       s.async = true
-      document.head.appendChild(s)
-    }
-  }, [])
+      s.crossOrigin = 'anonymous'
+      s.onload = () => {
+        if ((window as any).Paytm?.CheckoutJS) {
+          resolve()
+        } else {
+          reject(new Error('Paytm CheckoutJS failed to load'))
+        }
+      }
+      s.onerror = () => reject(new Error('Failed to load Paytm checkout script'))
+      document.body.appendChild(s)
+    })
+  }
 
   if (!product) {
     return (
@@ -61,40 +76,39 @@ export default function CheckoutPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create order')
 
-      if (!(window as any).Paytm) {
-        await new Promise<void>((resolve) => {
-          const check = () => {
-            if ((window as any).Paytm) resolve()
-            else setTimeout(check, 100)
-          }
-          check()
-        })
-      }
+      await loadPaytmCheckout(data.mid, data.env)
 
-      ;(window as any).Paytm.CheckoutJS.init({
-        root: '',
-        flow: 'DEFAULT',
-        data: {
-          orderId: data.orderId,
-          token: data.txnToken,
-          tokenType: 'TXN_TOKEN',
-          amount: data.amount,
-        },
-        handler: {
-          notifyMerchant: function (event: any) {
-            if (event?.transactionStatus === 'TXN_SUCCESS') {
-              setStep('success')
-            } else if (event?.transactionStatus === 'TXN_FAILURE') {
-              setStep('error')
-              setErrorMsg(event.responseMsg || 'Payment failed. Please try again.')
-            } else {
-              setStep('error')
-              setErrorMsg('Payment was cancelled.')
-            }
-          },
-        },
-      }).then(function () {
-        ;(window as any).Paytm.CheckoutJS.open()
+      await new Promise<void>((resolve, reject) => {
+        ;(window as any).Paytm.CheckoutJS.onLoad(function () {
+          ;(window as any).Paytm.CheckoutJS.init({
+            root: '',
+            flow: 'DEFAULT',
+            data: {
+              orderId: data.orderId,
+              token: data.txnToken,
+              tokenType: 'TXN_TOKEN',
+              amount: data.amount,
+            },
+            handler: {
+              notifyMerchant: function (event: any) {
+                if (event?.transactionStatus === 'TXN_SUCCESS') {
+                  setStep('success')
+                } else if (event?.transactionStatus === 'TXN_FAILURE') {
+                  setStep('error')
+                  setErrorMsg(event.responseMsg || 'Payment failed. Please try again.')
+                } else {
+                  setStep('error')
+                  setErrorMsg('Payment was cancelled.')
+                }
+              },
+            },
+          }).then(function () {
+            ;(window as any).Paytm.CheckoutJS.invoke()
+            resolve()
+          }).catch(function (err: any) {
+            reject(new Error(err?.message || 'Paytm initialization failed'))
+          })
+        })
       })
     } catch (e: any) {
       setStep('error')

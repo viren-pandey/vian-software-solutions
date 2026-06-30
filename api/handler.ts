@@ -2,13 +2,40 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import crypto from 'crypto'
 import { products } from '../lib/products'
 import { DEFAULT_SERVICES } from '../lib/default-services'
+import { generateAndStoreInvoicePdf } from '../lib/invoice-pdf'
+import {
+  createOrder as paytmCreateOrder,
+  createProductOrder as paytmCreateProductOrder,
+  getTransactionStatus,
+  generateSignature as paytmSign,
+  verifySignature as paytmVerify,
+  isConfigured as paytmConfigured,
+  getMid,
+  getEnv,
+  getCallbackUrl,
+  PaytmError,
+} from '../lib/paytm'
 
 const prisma = new PrismaClient()
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me'
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me'
+
+// Validate Paytm configuration at startup
+try {
+  if (paytmConfigured()) {
+    console.log('[Paytm] Configuration validated:', {
+      env: getEnv(),
+      mid: getMid().substring(0, 6) + '***',
+      callbackUrl: getCallbackUrl()
+    })
+  } else {
+    console.warn('[Paytm] WARNING: Payment gateway not configured - missing environment variables')
+  }
+} catch (err: any) {
+  console.error('[Paytm] Configuration error:', err.message)
+}
 
 // Rate limiter (in-memory sliding window)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -39,20 +66,10 @@ const ALLOWED_ORIGINS = [
   'https://viannn.online',
 ]
 
-// Paytm config
-const PAYTM_MID = process.env.PAYTM_MID || ''
-const PAYTM_MKEY = process.env.PAYTM_MKEY || ''
-const PAYTM_ENV = process.env.PAYTM_ENV || 'stage'
-const PAYTM_HOST = PAYTM_ENV === 'prod' ? 'https://securegw.paytm.in' : 'https://securegw-stage.paytm.in'
-const PAYTM_CALLBACK = (process.env.CALLBACK_URL || 'https://www.viannn.online') + '/api/payments/callback'
-
-function paytmSignature(body: any): string {
-  return crypto.createHmac('sha256', PAYTM_MKEY).update(JSON.stringify(body)).digest('hex')
-}
-
-function paytmVerify(body: any, signature: string): boolean {
-  return paytmSignature(body) === signature
-}
+// Paytm callback URLs
+const CALLBACK_BASE = process.env.CALLBACK_URL || 'https://www.viannn.online'
+const PAYTM_CALLBACK = process.env.PAYTM_CALLBACK_URL || (CALLBACK_BASE + '/api/payments/callback')
+const PROD_CALLBACK = CALLBACK_BASE + '/api/products/callback'
 
 function parseBody(req: any): Promise<any> {
   return new Promise((resolve) => {
@@ -883,75 +900,138 @@ export default async function handler(req: any, res: any) {
       if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
       if (invoice.userId !== user.id) return res.status(403).json({ error: 'Forbidden' })
       if (invoice.status === 'paid') return res.status(400).json({ error: 'Invoice already paid' })
-      if (!PAYTM_MID || !PAYTM_MKEY) return res.status(500).json({ error: 'Payment gateway not configured' })
+      if (!paytmConfigured()) return res.status(500).json({ error: 'Payment gateway not configured' })
 
-      const orderId = `ORD_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`
-      const amount = Number(invoice.amount).toFixed(2)
-
-      const paytmBody = {
-        requestType: 'Payment',
-        mid: PAYTM_MID,
-        orderId,
-        websiteName: 'WEBSTAGING',
-        txnAmount: { value: amount, currency: 'INR' },
-        userInfo: { custId: user.id },
+      const result = await paytmCreateOrder({
+        amount: invoice.amount,
+        custId: user.id,
         callbackUrl: PAYTM_CALLBACK,
-      }
-
-      const signature = paytmSignature(paytmBody)
-      const paytmRes = await fetch(`${PAYTM_HOST}/v3/order/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: paytmBody, head: { signature } }),
       })
-      const paytmText = await paytmRes.text()
-      let paytmData: any
-      try { paytmData = JSON.parse(paytmText) } catch {
-        return res.status(502).json({ error: 'Invalid response from payment gateway', detail: paytmText.slice(0, 500) })
-      }
 
-      if (paytmData.body?.resultInfo?.resultStatus !== 'S') {
-        return res.status(502).json({ error: paytmData.body?.resultInfo?.resultMsg || 'Failed to create Paytm order' })
-      }
+      await prisma.paymentLog.create({
+        data: {
+          logType: 'initiate_request',
+          rawPayload: { ...result.paytmResponse, invoiceId, orderId: result.orderId },
+        },
+      })
 
       await prisma.payment.create({
-        data: { invoiceId, userId: user.id, paytmTransactionId: orderId, amount: invoice.amount, status: 'pending', initiatedAt: new Date() },
+        data: {
+          invoiceId,
+          userId: user.id,
+          paytmTransactionId: result.orderId,
+          amount: invoice.amount,
+          status: 'pending',
+          initiatedAt: new Date(),
+        },
       })
 
-      return res.json({ orderId, txnToken: paytmData.body.txnToken, amount, mid: PAYTM_MID, env: PAYTM_ENV })
+      return res.json({
+        orderId: result.orderId,
+        txnToken: result.txnToken,
+        amount: result.amount,
+        mid: result.mid,
+        env: result.env,
+      })
     }
 
     // --- Paytm: Callback (public, no auth) ---
     if (path === '/api/payments/callback' && req.method === 'POST') {
       const { body: cbBody, head } = body
       if (!cbBody || !head?.signature) {
+        await prisma.paymentLog.create({
+          data: { logType: 'callback_invalid', rawPayload: { error: 'Missing body or signature' } },
+        })
         return res.status(400).json({ error: 'Invalid callback payload' })
       }
-      if (!paytmVerify(cbBody, head.signature)) {
-        await prisma.paymentLog.create({ data: { rawPayload: cbBody, signatureValid: false } })
+
+      const sigValid = await paytmVerify(cbBody, head.signature).catch(() => false)
+      if (!sigValid) {
+        await prisma.paymentLog.create({
+          data: { logType: 'callback_signature_failed', rawPayload: cbBody, signatureValid: false },
+        })
         return res.status(400).json({ error: 'Invalid signature' })
       }
 
-      const { orderId, status, txnId } = cbBody
+      const { orderId, status: txnStatus, txnId } = cbBody
       const payment = await prisma.payment.findUnique({ where: { paytmTransactionId: orderId } })
-      if (!payment) return res.status(404).json({ error: 'Payment not found' })
+      if (!payment) {
+        await prisma.paymentLog.create({
+          data: { logType: 'callback_order_not_found', rawPayload: cbBody, signatureValid: true },
+        })
+        return res.status(404).json({ error: 'Payment not found' })
+      }
 
-      await prisma.paymentLog.create({ data: { paymentId: payment.id, rawPayload: cbBody, signatureValid: true } })
+      await prisma.paymentLog.create({
+        data: { paymentId: payment.id, logType: 'callback_received', rawPayload: cbBody, signatureValid: true },
+      })
 
       if (payment.status === 'success') return res.json({ ok: true })
 
-      if (status === 'TXN_SUCCESS') {
-        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'pending' } })
-        await notifyAdmins('payment_verification', {
-          paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
-          message: `Payment of ₹${Number(payment.amount).toLocaleString()} needs your verification.`,
+      // Verify with Paytm Transaction Status API
+      let verified = false
+      let verifiedTxnId = txnId
+      let verifiedStatus = txnStatus
+      try {
+        const txnStatusResult = await getTransactionStatus({ orderId })
+        verified = true
+        verifiedStatus = txnStatusResult.status
+        verifiedTxnId = txnStatusResult.txnId || txnId
+
+        await prisma.paymentLog.create({
+          data: {
+            paymentId: payment.id,
+            logType: 'status_verification',
+            rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
+            signatureValid: true,
+          },
         })
-        await createNotification(payment.userId, 'payment_pending', {
+      } catch (err: any) {
+        await prisma.paymentLog.create({
+          data: {
+            paymentId: payment.id,
+            logType: 'status_verification_failed',
+            rawPayload: { error: err?.message || 'Verification failed', orderId },
+            signatureValid: true,
+          },
+        })
+      }
+
+      if (verifiedStatus === 'TXN_SUCCESS') {
+        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'success' } })
+        await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
+
+        const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
+        if (invoice && invoice.quotationId) {
+          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+        }
+
+        await prisma.paymentLog.create({
+          data: { paymentId: payment.id, logType: 'payment_marked_success', rawPayload: { txnId: verifiedTxnId }, signatureValid: true },
+        })
+
+        await createNotification(payment.userId, 'payment_success', {
           paymentId: payment.id, invoiceId: payment.invoiceId,
-          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} is being verified. We'll notify you once confirmed.`,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been confirmed. Invoice ${invoice?.invoiceNumber || ''} is now paid.`,
         })
-      } else if (status === 'TXN_FAILURE') {
+
+        await notifyAdmins('payment_completed', {
+          paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
+          message: `Payment of ₹${Number(payment.amount).toLocaleString()} completed by ${payment.userId}.`,
+        })
+
+        if (invoice) {
+          await import('@/lib/invoice-pdf').then(m => m.generateAndStoreInvoicePdf(invoice.id)).catch(() => {})
+        }
+      } else if (verifiedStatus === 'TXN_FAILURE') {
         await prisma.payment.update({ where: { id: payment.id }, data: { status: 'failed' } })
+        await prisma.paymentLog.create({
+          data: { paymentId: payment.id, logType: 'payment_marked_failed', rawPayload: { txnStatus: verifiedStatus }, signatureValid: true },
+        })
+        await createNotification(payment.userId, 'payment_failed', {
+          paymentId: payment.id, invoiceId: payment.invoiceId,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has failed. Please try again.`,
+        })
       }
 
       return res.json({ ok: true })
@@ -1227,39 +1307,17 @@ export default async function handler(req: any, res: any) {
       }
       const product = products.find((p: any) => p.id === productId)
       if (!product) return res.status(404).json({ error: 'Product not found' })
-      if (!PAYTM_MID || !PAYTM_MKEY) return res.status(500).json({ error: 'Payment gateway not configured' })
+      if (!paytmConfigured()) return res.status(500).json({ error: 'Payment gateway not configured' })
       if (!rateLimit(`create-order:${customerEmail}`, 5, 60000)) {
         return res.status(429).json({ error: 'Too many requests. Please try again later.' })
       }
 
-      const orderId = `PROD_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`
-      const amount = Number(product.price).toFixed(2)
-
-      const paytmBody = {
-        requestType: 'Payment',
-        mid: PAYTM_MID,
-        orderId,
-        websiteName: 'WEBSTAGING',
-        txnAmount: { value: amount, currency: 'INR' },
-        userInfo: { custId: customerEmail },
-        callbackUrl: (process.env.CALLBACK_URL || 'https://www.viannn.online') + '/api/products/callback',
-      }
-
-      const signature = paytmSignature(paytmBody)
-      const paytmRes = await fetch(`${PAYTM_HOST}/v3/order/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: paytmBody, head: { signature } }),
+      const result = await paytmCreateProductOrder({
+        amount: product.price,
+        custId: customerEmail,
+        callbackUrl: PROD_CALLBACK,
+        productId,
       })
-      const paytmText = await paytmRes.text()
-      let paytmData: any
-      try { paytmData = JSON.parse(paytmText) } catch {
-        return res.status(502).json({ error: 'Invalid response from payment gateway', detail: paytmText.slice(0, 500) })
-      }
-
-      if (paytmData.body?.resultInfo?.resultStatus !== 'S') {
-        return res.status(502).json({ error: paytmData.body?.resultInfo?.resultMsg || 'Failed to create Paytm order' })
-      }
 
       const purchase = await prisma.productPurchase.create({
         data: {
@@ -1270,7 +1328,14 @@ export default async function handler(req: any, res: any) {
           customerPhone: customerPhone || null,
           amount: product.price,
           status: 'pending',
-          paytmOrderId: orderId,
+          paytmOrderId: result.orderId,
+        },
+      })
+
+      await prisma.paymentLog.create({
+        data: {
+          logType: 'product_initiate',
+          rawPayload: { ...result.paytmResponse, productId, orderId: result.orderId },
         },
       })
 
@@ -1283,42 +1348,223 @@ export default async function handler(req: any, res: any) {
         message: `New purchase: ${product.name} by ${customerName} (${customerEmail}) — ₹${Number(product.price).toLocaleString()}`,
       })
 
-      return res.json({ orderId, txnToken: paytmData.body.txnToken, amount, mid: PAYTM_MID, env: PAYTM_ENV })
+      return res.json({
+        orderId: result.orderId,
+        txnToken: result.txnToken,
+        amount: result.amount,
+        mid: result.mid,
+        env: result.env,
+      })
     }
 
     // --- Products: Paytm Callback (public, no auth) ---
     if (path === '/api/products/callback' && req.method === 'POST') {
       const { body: cbBody, head } = body
       if (!cbBody || !head?.signature) {
+        await prisma.paymentLog.create({
+          data: { logType: 'product_callback_invalid', rawPayload: { error: 'Missing body or signature' } },
+        })
         return res.status(400).json({ error: 'Invalid callback payload' })
       }
-      if (!paytmVerify(cbBody, head.signature)) {
+
+      const sigValid = await paytmVerify(cbBody, head.signature).catch(() => false)
+      if (!sigValid) {
+        await prisma.paymentLog.create({
+          data: { logType: 'product_callback_signature_failed', rawPayload: cbBody, signatureValid: false },
+        })
         return res.status(400).json({ error: 'Invalid signature' })
       }
 
-      const { orderId, status, txnId } = cbBody
+      const { orderId, status: txnStatus, txnId } = cbBody
       const purchase = await prisma.productPurchase.findUnique({ where: { paytmOrderId: orderId } })
-      if (!purchase) return res.status(404).json({ error: 'Purchase not found' })
+      if (!purchase) {
+        await prisma.paymentLog.create({
+          data: { logType: 'product_callback_order_not_found', rawPayload: cbBody, signatureValid: true },
+        })
+        return res.status(404).json({ error: 'Purchase not found' })
+      }
+
+      await prisma.paymentLog.create({
+        data: { logType: 'product_callback_received', rawPayload: cbBody, signatureValid: true },
+      })
+
       if (purchase.status === 'success') return res.json({ ok: true })
 
-      if (status === 'TXN_SUCCESS') {
+      // Verify with Paytm Transaction Status API
+      let verifiedStatus = txnStatus
+      let verifiedTxnId = txnId
+      try {
+        const txnStatusResult = await getTransactionStatus({ orderId })
+        verifiedStatus = txnStatusResult.status
+        verifiedTxnId = txnStatusResult.txnId || txnId
+
+        await prisma.paymentLog.create({
+          data: {
+            logType: 'product_status_verification',
+            rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
+            signatureValid: true,
+          },
+        })
+      } catch (err: any) {
+        await prisma.paymentLog.create({
+          data: {
+            logType: 'product_status_verification_failed',
+            rawPayload: { error: err?.message || 'Verification failed', orderId },
+            signatureValid: true,
+          },
+        })
+      }
+
+      if (verifiedStatus === 'TXN_SUCCESS') {
         await prisma.productPurchase.update({
           where: { id: purchase.id },
-          data: { status: 'success', paytmTxnId: txnId },
+          data: { status: 'success', paytmTxnId: verifiedTxnId },
         })
-      } else if (status === 'TXN_FAILURE') {
+        await prisma.paymentLog.create({
+          data: { logType: 'product_marked_success', rawPayload: { txnId: verifiedTxnId }, signatureValid: true },
+        })
+        await notifyAdmins('product_purchase_success', {
+          purchaseId: purchase.id, productName: purchase.productName, amount: purchase.amount,
+          customerName: purchase.customerName, customerEmail: purchase.customerEmail,
+          message: `Product payment completed: ${purchase.productName} by ${purchase.customerName} — ₹${Number(purchase.amount).toLocaleString()}.`,
+        })
+      } else if (verifiedStatus === 'TXN_FAILURE') {
         await prisma.productPurchase.update({
           where: { id: purchase.id },
           data: { status: 'failed' },
         })
+        await prisma.paymentLog.create({
+          data: { logType: 'product_marked_failed', rawPayload: { txnStatus: verifiedStatus }, signatureValid: true },
+        })
       }
 
-      return res.json({ ok: true })
-    }
+return res.json({ ok: true })
+  }
 
-    return res.status(404).json({ error: 'Not found' })
+  // --- Client: Verify Payment Status ---
+  if (path === '/api/payments/verify' && req.method === 'POST') {
+    if (!requireAuth(user, res)) return
+    const { paymentId } = body
+    if (!paymentId) return res.status(400).json({ error: 'paymentId is required' })
+    const payment = await prisma.payment.findUnique({ where: { id: paymentId, userId: user.id } })
+    if (!payment) return res.status(404).json({ error: 'Payment not found' })
+    if (!payment.paytmTransactionId) return res.status(400).json({ error: 'No transaction ID to verify' })
+
+    try {
+      const txnStatusResult = await getTransactionStatus({ orderId: payment.paytmTransactionId })
+      if (txnStatusResult.status === 'TXN_SUCCESS') {
+        await prisma.payment.update({ where: { id: paymentId }, data: { status: 'success' } })
+        await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
+        await createNotification(user.id, 'payment_verified', {
+          paymentId, invoiceId: payment.invoiceId,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been verified and confirmed.`,
+        })
+        const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
+        if (invoice?.quotationId) {
+          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+        }
+        await import('@/lib/invoice-pdf').then(m => m.generateAndStoreInvoicePdf(payment.invoiceId)).catch(() => {})
+        return res.json({ status: 'success', message: 'Payment verified successfully' })
+      } else if (txnStatusResult.status === 'TXN_FAILURE') {
+        await prisma.payment.update({ where: { id: paymentId }, data: { status: 'failed' } })
+        await createNotification(user.id, 'payment_failed', {
+          paymentId, invoiceId: payment.invoiceId,
+          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has failed. Please try again.`,
+        })
+        return res.json({ status: 'failed', message: 'Payment failed' })
+      }
+      return res.json({ status: 'pending', message: 'Payment still pending' })
+    } catch (err: any) {
+      console.error('[Payments] Verify error:', err?.message || err)
+      return res.status(502).json({ error: 'Failed to verify payment with Paytm' })
+    }
+  }
+
+  // --- Client: Get Single Payment ---
+  const paymentDetailMatch = path.match(/^\/api\/payments\/([^/]+)$/)
+  if (paymentDetailMatch && req.method === 'GET') {
+    if (!requireAuth(user, res)) return
+    const paymentId = paymentDetailMatch[1]
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId, userId: user.id },
+      include: { invoice: { include: { quotation: true, payments: true } } },
+    })
+    if (!payment) return res.status(404).json({ error: 'Payment not found' })
+    return res.json(payment)
+  }
+
+  // --- Client: Retry Failed Payment ---
+  if (path === '/api/payments/retry' && req.method === 'POST') {
+    if (!requireAuth(user, res)) return
+    const { paymentId } = body
+    if (!paymentId) return res.status(400).json({ error: 'paymentId is required' })
+    const payment = await prisma.payment.findUnique({ where: { id: paymentId, userId: user.id } })
+    if (!payment) return res.status(404).json({ error: 'Payment not found' })
+    if (payment.status === 'success') return res.status(400).json({ error: 'Payment already successful' })
+    if (!paytmConfigured()) return res.status(500).json({ error: 'Payment gateway not configured' })
+
+    const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' })
+    if (invoice.status === 'paid') return res.status(400).json({ error: 'Invoice already paid' })
+
+    const result = await paytmCreateOrder({
+      amount: invoice.amount,
+      custId: user.id,
+      callbackUrl: PAYTM_CALLBACK,
+    })
+
+    await prisma.paymentLog.create({
+      data: { logType: 'retry_initiate', rawPayload: { ...result.paytmResponse, invoiceId: invoice.id, orderId: result.orderId } },
+    })
+
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { paytmTransactionId: result.orderId, status: 'pending', initiatedAt: new Date() },
+    })
+
+    return res.json({
+      orderId: result.orderId,
+      txnToken: result.txnToken,
+      amount: result.amount,
+      mid: result.mid,
+      env: result.env,
+    })
+  }
+
+  // --- Client: Get Invoice PDF ---
+  const paymentPdfMatch = path.match(/^\/api\/payments\/([^/]+)\/pdf$/)
+  if (paymentPdfMatch && req.method === 'GET') {
+    if (!requireAuth(user, res)) return
+    const paymentId = paymentPdfMatch[1]
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId, userId: user.id },
+      include: { invoice: true },
+    })
+    if (!payment) return res.status(404).json({ error: 'Payment not found' })
+    if (!payment.invoice) return res.status(404).json({ error: 'Invoice not found' })
+
+    const pdfUrl = await import('@/lib/invoice-pdf').then(m => m.generateAndStoreInvoicePdf(payment.invoice.id)).catch(() => null)
+    if (!pdfUrl) return res.status(500).json({ error: 'Failed to generate PDF' })
+
+    const fs = await import('fs/promises')
+    const pathMod = await import('path')
+    const filePath = pathMod.join(process.cwd(), 'public', pdfUrl)
+    try {
+      const file = await fs.readFile(filePath)
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="invoice-${payment.invoice.invoiceNumber}.pdf"`)
+      return res.send(file)
+    } catch {
+      return res.status(404).json({ error: 'PDF file not found' })
+    }
+  }
+
+  return res.status(404).json({ error: 'Not found' })
   } catch (err: any) {
     console.error('API Error:', err?.message || err)
+    if (err instanceof PaytmError) {
+      return res.status(err.code === 'PAYTM_NOT_CONFIGURED' ? 500 : 502).json(err.toJSON())
+    }
     return res.status(500).json({ error: err?.message || 'Internal server error' })
   }
 }

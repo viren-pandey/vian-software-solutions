@@ -41,6 +41,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.22.0",
     "next": "^15.5.9",
+    "paytmchecksum": "^1.5.1",
     "pdfkit": "^0.19.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

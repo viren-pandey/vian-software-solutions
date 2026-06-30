@@ -110,6 +110,14 @@ function createApi(extraHeaders: Record<string, string> = {}) {
           '/api/payments/create-order', h({ method: 'POST', body: JSON.stringify({ invoiceId }) })),
       initiate: (invoiceId: string) =>
         request<{ ok: boolean }>('/api/payments/initiate', h({ method: 'POST', body: JSON.stringify({ invoiceId }) })),
+      verify: (paymentId: string) =>
+        request<{ status: string; message: string }>('/api/payments/verify', h({ method: 'POST', body: JSON.stringify({ paymentId }) })),
+      get: (id: string) => request<Payment>(`/api/payments/${id}`, h()),
+      retry: (paymentId: string) =>
+        request<{ orderId: string; txnToken: string; amount: string; mid: string; env: string }>(
+          '/api/payments/retry', h({ method: 'POST', body: JSON.stringify({ paymentId }) })),
+      getPdf: (paymentId: string) =>
+        request<Blob>(`/api/payments/${paymentId}/pdf`, h()),
     },
     support: {
       list: () => request<SupportTicket[]>('/api/support/tickets', h()),
