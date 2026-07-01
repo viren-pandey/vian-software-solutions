@@ -91,9 +91,10 @@ export default function CheckoutPage() {
             },
             handler: {
               notifyMerchant: function (event: any) {
-                if (event?.transactionStatus === 'TXN_SUCCESS') {
+                const txnStatus = event?.transactionStatus || event?.txnStatus || event?.status
+                if (txnStatus === 'TXN_SUCCESS') {
                   setStep('success')
-                } else if (event?.transactionStatus === 'TXN_FAILURE') {
+                } else if (txnStatus === 'TXN_FAILURE') {
                   setStep('error')
                   setErrorMsg(event.responseMsg || 'Payment failed. Please try again.')
                 } else {
@@ -129,11 +130,23 @@ export default function CheckoutPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1>Payment Successful!</h1>
-          <p className="lead">Thank you for your purchase, {customerName}. Your order for <strong>{product.name}</strong> has been received.</p>
+          <h1>Payment Successful! 🎉</h1>
+          <p className="lead">Thank you for your purchase, {customerName}. Your order for <strong>{product.name}</strong> has been received and is being processed.</p>
+
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid var(--success)', borderRadius: 'var(--radius)',
+            padding: 20, marginTop: 20, textAlign: 'center'
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>You'll receive your deliverables soon</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              We've started working on your order. All files and deliverables will be sent to <strong>{customerEmail}</strong> as per the schedule below.
+            </p>
+          </div>
+
           <div style={{
             background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-            padding: 24, marginTop: 24, textAlign: 'left'
+            padding: 24, marginTop: 20, textAlign: 'left'
           }}>
             <p style={{ marginBottom: 8 }}><strong>Product:</strong> {product.name}</p>
             <p style={{ marginBottom: 8 }}><strong>Amount:</strong> Rs.{product.price.toLocaleString('en-IN')}</p>
@@ -153,7 +166,7 @@ export default function CheckoutPage() {
               ))}
             </div>
               <p className="muted" style={{ fontSize: 13, marginTop: 16 }}>
-                Your product files will be delivered instantly to your email after successful payment. Two pages of modification are included free of charge. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
+                Two pages of modification are included free of charge. For any issues, contact us at <a href="mailto:support@viannn.online">support@viannn.online</a>.
               </p>
           </div>
           <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>

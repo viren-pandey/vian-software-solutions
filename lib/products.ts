@@ -148,8 +148,8 @@ export const products: Product[] = [
     ],
   },
   {
-    id: 'sample-spacedebrisai', name: 'Sample SpaceDebrisAI', price: 10,
-    desc: 'A sample product for SpaceDebrisAI — a lightweight demo to test AI-powered space debris tracking and orbital analytics. Includes a basic dashboard with simulated debris data, trajectory visualisation, and collision risk scoring.',
+    id: 'sample-spacedebrisai', name: 'Sample SpaceDebrisAI', price: 1,
+    desc: ' its a test prodduct any money paid wont be refunded A sample product for SpaceDebrisAI — a lightweight demo to test AI-powered space debris tracking and orbital analytics. Includes a basic dashboard with simulated debris data, trajectory visualisation, and collision risk scoring.',
     icon: 'Globe', category: 'Space',
     features: ['Simulated space debris tracking dashboard', 'Orbital trajectory visualisation', 'Collision risk scoring algorithm', 'Sample dataset with 50 debris objects', 'API endpoint for debris data retrieval', 'Basic analytics and reporting'],
     milestones: [

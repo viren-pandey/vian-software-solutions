@@ -1360,88 +1360,120 @@ export default async function handler(req: any, res: any) {
     }
 
     // --- Products: Paytm Callback (public, no auth) ---
-    if (path === '/api/products/callback' && req.method === 'POST') {
-      const { body: cbBody, head } = body
-      if (!cbBody || !head?.signature) {
-        await prisma.paymentLog.create({
-          data: { logType: 'product_callback_invalid', rawPayload: { error: 'Missing body or signature' } },
-        })
-        return res.status(400).json({ error: 'Invalid callback payload' })
+    if (path === '/api/products/callback') {
+      // Handle GET (browser redirect) - redirect to products page
+      if (req.method === 'GET') {
+        const queryOrderId = (req.query?.orderId as string) || ''
+        const queryStatus = (req.query?.txnStatus as string) || (req.query?.status as string) || ''
+        if (queryStatus === 'TXN_SUCCESS' || queryStatus === 'SUCCESS') {
+          return res.redirect('/products?payment=success')
+        }
+        return res.redirect('/products')
       }
 
-      const sigValid = await paytmVerify(cbBody, head.signature).catch(() => false)
-      if (!sigValid) {
+      // POST handling - accept multiple callback formats from Paytm
+      if (req.method === 'POST') {
+        // Extract transaction data - try multiple formats:
+        // 1. { body: {...}, head: { signature } } (JSON API)
+        // 2. Raw JSON with ORDERID/STATUS fields (legacy JSON)
+        // 3. URL-encoded form data
+        let txData = body.body || body
+        let signature = body.head?.signature || body.signature || body.CHECKSUMHASH || ''
+
+        // Handle string body (Paytm sometimes stringifies the body field)
+        if (typeof txData === 'string') {
+          try { txData = JSON.parse(txData) } catch { txData = {} }
+        }
+
+        // Normalize field names (Paytm may use different conventions)
+        const orderId = txData.orderId || txData.ORDERID || txData.ORDER_ID || ''
+        const txnStatus = txData.txnStatus || txData.STATUS || txData.status || txData.TXN_STATUS || ''
+        const txnId = txData.txnId || txData.TXNID || txData.txn_id || txData.bankTxnId || ''
+
+        // Log the raw payload
         await prisma.paymentLog.create({
-          data: { logType: 'product_callback_signature_failed', rawPayload: cbBody, signatureValid: false },
+          data: { logType: 'product_callback_received', rawPayload: { format: signature ? 'signed' : 'unsigned', txData, orderId, txnStatus } },
         })
-        return res.status(400).json({ error: 'Invalid signature' })
+
+        if (!orderId) {
+          await prisma.paymentLog.create({
+            data: { logType: 'product_callback_invalid', rawPayload: { error: 'No orderId found', body } },
+          })
+          return res.status(400).json({ error: 'Invalid callback payload - no orderId' })
+        }
+
+        // Verify signature if present
+        if (signature && body.body) {
+          const sigValid = await paytmVerify(body.body, signature).catch(() => false)
+          if (!sigValid) {
+            await prisma.paymentLog.create({
+              data: { logType: 'product_callback_signature_failed', rawPayload: txData, signatureValid: false },
+            })
+            // Don't reject - fall through to status verification
+          }
+        }
+
+        const purchase = await prisma.productPurchase.findUnique({ where: { paytmOrderId: orderId } })
+        if (!purchase) {
+          await prisma.paymentLog.create({
+            data: { logType: 'product_callback_order_not_found', rawPayload: txData },
+          })
+          return res.status(404).json({ error: 'Purchase not found' })
+        }
+
+        if (purchase.status === 'success') return res.json({ ok: true })
+
+        // Verify with Paytm Transaction Status API
+        let verifiedStatus = txnStatus
+        let verifiedTxnId = txnId
+        try {
+          const txnStatusResult = await getTransactionStatus({ orderId })
+          verifiedStatus = txnStatusResult.status
+          verifiedTxnId = txnStatusResult.txnId || txnId
+
+          await prisma.paymentLog.create({
+            data: {
+              logType: 'product_status_verification',
+              rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
+            },
+          })
+        } catch (err: any) {
+          await prisma.paymentLog.create({
+            data: {
+              logType: 'product_status_verification_failed',
+              rawPayload: { error: err?.message || 'Verification failed', orderId },
+            },
+          })
+        }
+
+        if (verifiedStatus === 'TXN_SUCCESS') {
+          await prisma.productPurchase.update({
+            where: { id: purchase.id },
+            data: { status: 'success', paytmTxnId: verifiedTxnId },
+          })
+          await prisma.paymentLog.create({
+            data: { logType: 'product_marked_success', rawPayload: { txnId: verifiedTxnId } },
+          })
+          await notifyAdmins('product_purchase_success', {
+            purchaseId: purchase.id, productName: purchase.productName, amount: purchase.amount,
+            customerName: purchase.customerName, customerEmail: purchase.customerEmail,
+            message: `Product payment completed: ${purchase.productName} by ${purchase.customerName} — ₹${Number(purchase.amount).toLocaleString()}.`,
+          })
+        } else if (verifiedStatus === 'TXN_FAILURE') {
+          await prisma.productPurchase.update({
+            where: { id: purchase.id },
+            data: { status: 'failed' },
+          })
+          await prisma.paymentLog.create({
+            data: { logType: 'product_marked_failed', rawPayload: { txnStatus: verifiedStatus } },
+          })
+        }
+
+        return res.json({ ok: true })
       }
 
-      const { orderId, status: txnStatus, txnId } = cbBody
-      const purchase = await prisma.productPurchase.findUnique({ where: { paytmOrderId: orderId } })
-      if (!purchase) {
-        await prisma.paymentLog.create({
-          data: { logType: 'product_callback_order_not_found', rawPayload: cbBody, signatureValid: true },
-        })
-        return res.status(404).json({ error: 'Purchase not found' })
-      }
-
-      await prisma.paymentLog.create({
-        data: { logType: 'product_callback_received', rawPayload: cbBody, signatureValid: true },
-      })
-
-      if (purchase.status === 'success') return res.json({ ok: true })
-
-      // Verify with Paytm Transaction Status API
-      let verifiedStatus = txnStatus
-      let verifiedTxnId = txnId
-      try {
-        const txnStatusResult = await getTransactionStatus({ orderId })
-        verifiedStatus = txnStatusResult.status
-        verifiedTxnId = txnStatusResult.txnId || txnId
-
-        await prisma.paymentLog.create({
-          data: {
-            logType: 'product_status_verification',
-            rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
-            signatureValid: true,
-          },
-        })
-      } catch (err: any) {
-        await prisma.paymentLog.create({
-          data: {
-            logType: 'product_status_verification_failed',
-            rawPayload: { error: err?.message || 'Verification failed', orderId },
-            signatureValid: true,
-          },
-        })
-      }
-
-      if (verifiedStatus === 'TXN_SUCCESS') {
-        await prisma.productPurchase.update({
-          where: { id: purchase.id },
-          data: { status: 'success', paytmTxnId: verifiedTxnId },
-        })
-        await prisma.paymentLog.create({
-          data: { logType: 'product_marked_success', rawPayload: { txnId: verifiedTxnId }, signatureValid: true },
-        })
-        await notifyAdmins('product_purchase_success', {
-          purchaseId: purchase.id, productName: purchase.productName, amount: purchase.amount,
-          customerName: purchase.customerName, customerEmail: purchase.customerEmail,
-          message: `Product payment completed: ${purchase.productName} by ${purchase.customerName} — ₹${Number(purchase.amount).toLocaleString()}.`,
-        })
-      } else if (verifiedStatus === 'TXN_FAILURE') {
-        await prisma.productPurchase.update({
-          where: { id: purchase.id },
-          data: { status: 'failed' },
-        })
-        await prisma.paymentLog.create({
-          data: { logType: 'product_marked_failed', rawPayload: { txnStatus: verifiedStatus }, signatureValid: true },
-        })
-      }
-
-return res.json({ ok: true })
-  }
+      return res.status(405).json({ error: 'Method not allowed' })
+    }
 
   // --- Client: Verify Payment Status ---
   if (path === '/api/payments/verify' && req.method === 'POST') {
