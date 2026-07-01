@@ -14,13 +14,15 @@ export default async function AdminPage() {
 
   let stats: AdminStats | null = await api.admin.stats().catch(() => null)
   if (!stats) {
-    const [users, projects, payments] = await Promise.all([
+    const [users, projects, payments, blogPosts] = await Promise.all([
       prisma.user.count(),
       prisma.project.count(),
       prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
+      prisma.blogPost.count(),
     ])
     const quotations = await prisma.quotation.count()
-    stats = { users, quotations, projects, revenue: Number(payments._sum.amount ?? 0) }
+    const publishedPosts = await prisma.blogPost.count({ where: { published: true } })
+    stats = { users, quotations, projects, revenue: Number(payments._sum.amount ?? 0), blogPosts, publishedPosts }
   }
 
   let users = await api.admin.users().catch(() => null)

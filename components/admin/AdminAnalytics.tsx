@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import type { AdminStats } from '@/types/api'
-import { BarChart3, TrendingUp, Users, DollarSign, Activity } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, DollarSign, Activity, Newspaper } from 'lucide-react'
 
 interface AdminAnalyticsProps {
   stats: AdminStats
@@ -60,6 +60,8 @@ export function AdminAnalytics({ stats }: AdminAnalyticsProps) {
     { value: stats.quotations, label: 'Total Quotations', icon: <BarChart3 size={20} />, color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
     { value: formatCurrency(stats.revenue), label: 'Total Revenue', icon: <DollarSign size={20} />, color: '#D97706', bg: 'rgba(217,119,6,0.1)' },
     { value: `${conversionRate}%`, label: 'Conversion Rate', icon: <TrendingUp size={20} />, color: '#059669', bg: 'rgba(5,150,105,0.1)' },
+    { value: stats.blogPosts, label: 'Blog Posts', icon: <Newspaper size={20} />, color: '#EC4899', bg: 'rgba(236,72,153,0.1)' },
+    { value: stats.publishedPosts, label: 'Published', icon: <Newspaper size={20} />, color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
   ]
 
   return (

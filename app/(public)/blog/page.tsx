@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 import { siteUrl } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
@@ -33,22 +34,17 @@ interface BlogPost {
   excerpt: string | null
   category: string | null
   tags: string[]
-  publishedAt: string | null
+  publishedAt: Date | null
 }
 
 async function getPosts(): Promise<BlogPost[]> {
   try {
-    const base = process.env.NEXT_PUBLIC_API_URL || ''
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(`${base}/api/blogs?limit=50`, {
-      signal: controller.signal,
-      next: { revalidate: 300 },
+    return await prisma.blogPost.findMany({
+      where: { published: true },
+      orderBy: { publishedAt: 'desc' },
+      take: 50,
+      select: { id: true, title: true, slug: true, excerpt: true, category: true, tags: true, publishedAt: true },
     })
-    clearTimeout(timeout)
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.posts || []
   } catch {
     return []
   }

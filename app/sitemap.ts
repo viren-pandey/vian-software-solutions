@@ -1,15 +1,13 @@
 import type { MetadataRoute } from 'next'
+import { prisma } from '@/lib/prisma'
 
 async function getPublishedSlugs(): Promise<string[]> {
   try {
-    const base = process.env.NEXT_PUBLIC_API_URL || ''
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(`${base}/api/blogs?limit=100`, { signal: controller.signal, next: { revalidate: 3600 } })
-    clearTimeout(timeout)
-    if (!res.ok) return []
-    const data = await res.json()
-    return (data.posts || []).map((p: { slug: string }) => p.slug)
+    const posts = await prisma.blogPost.findMany({
+      where: { published: true },
+      select: { slug: true },
+    })
+    return posts.map(p => p.slug)
   } catch {
     return []
   }

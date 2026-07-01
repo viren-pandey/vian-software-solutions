@@ -150,6 +150,8 @@ export interface AdminStats {
   quotations: number
   projects: number
   revenue: number
+  blogPosts: number
+  publishedPosts: number
 }
 
 export interface ChatListItem {

@@ -586,13 +586,15 @@ export default async function handler(req: any, res: any) {
     // --- Admin Stats ---
     if (path === '/api/admin/stats' && req.method === 'GET') {
       if (!requireAdmin(user, res)) return
-      const [users, quotations, projects, payments] = await Promise.all([
+      const [users, quotations, projects, payments, blogPosts] = await Promise.all([
         prisma.user.count(),
         prisma.quotation.count(),
         prisma.project.count(),
         prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
+        prisma.blogPost.count(),
       ])
-      return res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0 })
+      const publishedPosts = await prisma.blogPost.count({ where: { published: true } })
+      return res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts })
     }
 
     // --- Admin Users ---

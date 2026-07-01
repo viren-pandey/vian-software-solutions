@@ -1,34 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-interface BlogPost {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  content: string | null
-  category: string | null
-  tags: string[]
-  published: boolean
-  publishedAt: string | null
-  author: { id: string; name: string } | null
-}
-
-async function getPost(slug: string): Promise<BlogPost | null> {
+async function getPost(slug: string) {
   try {
-    const base = process.env.NEXT_PUBLIC_API_URL || ''
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(`${base}/api/blogs/${slug}`, {
-      signal: controller.signal,
-      next: { revalidate: 300 },
+    return await prisma.blogPost.findUnique({
+      where: { slug, published: true },
+      include: { author: { select: { id: true, name: true } } },
     })
-    clearTimeout(timeout)
-    if (!res.ok) return null
-    return res.json()
   } catch {
     return null
   }
@@ -46,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: post.title,
       description: post.excerpt || '',
       type: 'article',
-      publishedTime: post.publishedAt || undefined,
+      publishedTime: post.publishedAt?.toISOString() || undefined,
       authors: post.author ? [post.author.name] : undefined,
     },
   }

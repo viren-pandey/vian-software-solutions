@@ -128,14 +128,16 @@ app.get('/api/auth/me', async (req, res) => {
 app.get('/api/admin/stats', async (req, res) => {
   if (!requireAdmin(req, res)) return
   try {
-    const [users, quotations, projects, payments] = await Promise.all([
+    const [users, quotations, projects, payments, blogPosts] = await Promise.all([
       prisma.user.count(),
       prisma.quotation.count(),
       prisma.project.count(),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } })
+      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
+      prisma.blogPost.count(),
     ])
-    res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0 })
-  } catch { res.json({ users: 0, quotations: 0, projects: 0, revenue: 0 }) }
+    const publishedPosts = await prisma.blogPost.count({ where: { published: true } })
+    res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts })
+  } catch { res.json({ users: 0, quotations: 0, projects: 0, revenue: 0, blogPosts: 0, publishedPosts: 0 }) }
 })
 
 app.get('/api/admin/users', async (req, res) => {
@@ -144,6 +146,96 @@ app.get('/api/admin/users', async (req, res) => {
     const users = await prisma.user.findMany({ include: { roles: true }, orderBy: { createdAt: 'desc' }, take: 50 })
     res.json(users.map(u => ({ id: u.id, name: u.name, email: u.email, role: u.roles[0]?.role || 'client', createdAt: u.createdAt })))
   } catch { res.json([]) }
+})
+
+// --- Public Blog Routes ---
+app.get('/api/blogs', async (_req, res) => {
+  try {
+    const limit = Math.min(parseInt(_req.query?.limit as string) || 20, 50)
+    const offset = parseInt(_req.query?.offset as string) || 0
+    const [posts, total] = await Promise.all([
+      prisma.blogPost.findMany({
+        where: { published: true },
+        orderBy: { publishedAt: 'desc' },
+        take: limit, skip: offset,
+        select: { id: true, title: true, slug: true, excerpt: true, category: true, tags: true, publishedAt: true },
+      }),
+      prisma.blogPost.count({ where: { published: true } }),
+    ])
+    res.json({ posts, total })
+  } catch { res.json({ posts: [], total: 0 }) }
+})
+
+app.get('/api/blogs/:slug', async (req, res) => {
+  try {
+    const post = await prisma.blogPost.findUnique({
+      where: { slug: req.params.slug, published: true },
+      include: { author: { select: { id: true, name: true } } },
+    })
+    if (!post) return res.status(404).json({ error: 'Blog post not found' })
+    res.json(post)
+  } catch { res.status(500).json({ error: 'Server error' }) }
+})
+
+// --- Admin Blog Routes ---
+app.get('/api/admin/blogs', async (req, res) => {
+  if (!requireAdmin(req, res)) return
+  try {
+    const posts = await prisma.blogPost.findMany({ orderBy: { createdAt: 'desc' } })
+    res.json(posts)
+  } catch { res.json([]) }
+})
+
+app.post('/api/admin/blogs', async (req, res) => {
+  if (!requireAdmin(req, res)) return
+  const { title, slug, excerpt, content, category, tags, published } = req.body
+  if (!title || !slug) return res.status(400).json({ error: 'Title and slug are required' })
+  try {
+    const existing = await prisma.blogPost.findUnique({ where: { slug } })
+    if (existing) return res.status(409).json({ error: 'A post with this slug already exists' })
+    const auth = getAuthUser(req)
+    const post = await prisma.blogPost.create({
+      data: {
+        title, slug, excerpt, content, category,
+        tags: tags || [],
+        published: published || false,
+        authorId: auth!.userId,
+        publishedAt: published ? new Date() : null,
+      },
+    })
+    res.json(post)
+  } catch { res.status(500).json({ error: 'Failed to create post' }) }
+})
+
+app.get('/api/admin/blogs/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return
+  try {
+    const post = await prisma.blogPost.findUnique({ where: { id: req.params.id } })
+    if (!post) return res.status(404).json({ error: 'Blog post not found' })
+    res.json(post)
+  } catch { res.status(500).json({ error: 'Server error' }) }
+})
+
+app.put('/api/admin/blogs/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return
+  const { title, slug, excerpt, content, category, tags, published } = req.body
+  try {
+    const data: any = { title, slug, excerpt, content, category, tags }
+    if (published !== undefined) {
+      data.published = published
+      data.publishedAt = published ? new Date() : null
+    }
+    const post = await prisma.blogPost.update({ where: { id: req.params.id }, data })
+    res.json(post)
+  } catch { res.status(500).json({ error: 'Failed to update post' }) }
+})
+
+app.delete('/api/admin/blogs/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return
+  try {
+    await prisma.blogPost.delete({ where: { id: req.params.id } })
+    res.json({ success: true })
+  } catch { res.status(500).json({ error: 'Failed to delete post' }) }
 })
 
 const PORT = process.env.PORT || 3001
