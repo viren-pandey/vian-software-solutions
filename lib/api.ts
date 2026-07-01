@@ -119,6 +119,9 @@ function createApi(extraHeaders: Record<string, string> = {}) {
       getPdf: (paymentId: string) =>
         request<Blob>(`/api/payments/${paymentId}/pdf`, h()),
     },
+    paymentRequests: {
+      list: () => request<PaymentRequest[]>('/api/payment-requests', h()),
+    },
     support: {
       list: () => request<SupportTicket[]>('/api/support/tickets', h()),
       create: (subject: string) =>

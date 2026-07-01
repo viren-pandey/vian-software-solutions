@@ -128,16 +128,18 @@ app.get('/api/auth/me', async (req, res) => {
 app.get('/api/admin/stats', async (req, res) => {
   if (!requireAdmin(req, res)) return
   try {
-    const [users, quotations, projects, payments, blogPosts] = await Promise.all([
+    const [users, quotations, projects, payments, blogPosts, pendingPayments, totalPayments] = await Promise.all([
       prisma.user.count(),
       prisma.quotation.count(),
       prisma.project.count(),
       prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
       prisma.blogPost.count(),
+      prisma.payment.count({ where: { status: 'pending' } }),
+      prisma.payment.count(),
     ])
     const publishedPosts = await prisma.blogPost.count({ where: { published: true } })
-    res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts })
-  } catch { res.json({ users: 0, quotations: 0, projects: 0, revenue: 0, blogPosts: 0, publishedPosts: 0 }) }
+    res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts, pendingPayments, totalPayments })
+  } catch { res.json({ users: 0, quotations: 0, projects: 0, revenue: 0, blogPosts: 0, publishedPosts: 0, pendingPayments: 0, totalPayments: 0 }) }
 })
 
 app.get('/api/admin/users', async (req, res) => {

@@ -563,6 +563,16 @@ export default async function handler(req: any, res: any) {
       return res.json({ ok: true })
     }
 
+    // --- Client Payment Requests (created by admin) ---
+    if (path === '/api/payment-requests' && req.method === 'GET') {
+      if (!requireAuth(user, res)) return
+      const requests = await prisma.paymentRequest.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+      })
+      return res.json(requests)
+    }
+
     // --- Client Support Tickets ---
     if (path === '/api/support/tickets' && req.method === 'GET') {
       if (!requireAuth(user, res)) return
@@ -586,15 +596,17 @@ export default async function handler(req: any, res: any) {
     // --- Admin Stats ---
     if (path === '/api/admin/stats' && req.method === 'GET') {
       if (!requireAdmin(user, res)) return
-      const [users, quotations, projects, payments, blogPosts] = await Promise.all([
+      const [users, quotations, projects, payments, blogPosts, pendingPayments, totalPayments] = await Promise.all([
         prisma.user.count(),
         prisma.quotation.count(),
         prisma.project.count(),
         prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'success' } }),
         prisma.blogPost.count(),
+        prisma.payment.count({ where: { status: 'pending' } }),
+        prisma.payment.count(),
       ])
       const publishedPosts = await prisma.blogPost.count({ where: { published: true } })
-      return res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts })
+      return res.json({ users, quotations, projects, revenue: payments._sum.amount ?? 0, blogPosts, publishedPosts, pendingPayments, totalPayments })
     }
 
     // --- Admin Users ---
@@ -683,8 +695,8 @@ export default async function handler(req: any, res: any) {
         quotationId: id, title: quotation.title, status: status || quotation.status,
         message: `Your quotation "${quotation.title}" has been updated to ${(status || quotation.status).replace(/_/g, ' ')}.`,
       })
-      // If accepted or payment requested, create invoice + project
-      if (status === 'ACCEPTED' || status === 'PAYMENT_REQUESTED') {
+      // If accepted, payment requested, or invoiced, create invoice + project
+      if (status === 'ACCEPTED' || status === 'PAYMENT_REQUESTED' || status === 'INVOICED') {
         const q = await prisma.quotation.findUnique({ where: { id }, include: { invoice: true, project: true } })
         if (q && !q.invoice) {
           if (!q.quotedAmount) {
@@ -938,105 +950,128 @@ export default async function handler(req: any, res: any) {
     }
 
     // --- Paytm: Callback (public, no auth) ---
-    if (path === '/api/payments/callback' && req.method === 'POST') {
-      const { body: cbBody, head } = body
-      if (!cbBody || !head?.signature) {
-        await prisma.paymentLog.create({
-          data: { logType: 'callback_invalid', rawPayload: { error: 'Missing body or signature' } },
-        })
-        return res.status(400).json({ error: 'Invalid callback payload' })
+    if (path === '/api/payments/callback') {
+      // Handle GET (browser redirect) - redirect to invoices page
+      if (req.method === 'GET') {
+        const queryStatus = (req.query?.txnStatus as string) || (req.query?.status as string) || ''
+        if (queryStatus === 'TXN_SUCCESS' || queryStatus === 'SUCCESS') {
+          return res.redirect('/dashboard/invoices?payment=success')
+        }
+        return res.redirect('/dashboard/invoices')
       }
 
-      const sigValid = await paytmVerify(cbBody, head.signature).catch(() => false)
-      if (!sigValid) {
-        await prisma.paymentLog.create({
-          data: { logType: 'callback_signature_failed', rawPayload: cbBody, signatureValid: false },
-        })
-        return res.status(400).json({ error: 'Invalid signature' })
-      }
+      if (req.method === 'POST') {
+        // Extract transaction data - handle multiple formats
+        let txData = body.body || body
+        let signature = body.head?.signature || body.signature || body.CHECKSUMHASH || ''
+        if (typeof txData === 'string') {
+          try { txData = JSON.parse(txData) } catch { txData = {} }
+        }
 
-      const { orderId, status: txnStatus, txnId } = cbBody
-      const payment = await prisma.payment.findUnique({ where: { paytmTransactionId: orderId } })
-      if (!payment) {
-        await prisma.paymentLog.create({
-          data: { logType: 'callback_order_not_found', rawPayload: cbBody, signatureValid: true },
-        })
-        return res.status(404).json({ error: 'Payment not found' })
-      }
+        const orderId = txData.orderId || txData.ORDERID || txData.ORDER_ID || ''
+        const txnStatus = txData.txnStatus || txData.STATUS || txData.status || txData.TXN_STATUS || ''
+        const txnId = txData.txnId || txData.TXNID || txData.txn_id || txData.bankTxnId || ''
 
-      await prisma.paymentLog.create({
-        data: { paymentId: payment.id, logType: 'callback_received', rawPayload: cbBody, signatureValid: true },
-      })
+        if (!orderId) {
+          await prisma.paymentLog.create({
+            data: { logType: 'callback_invalid', rawPayload: { error: 'No orderId', body } },
+          })
+          return res.status(400).json({ error: 'Invalid callback payload - no orderId' })
+        }
 
-      if (payment.status === 'success') return res.json({ ok: true })
+        // Verify signature if present
+        if (signature && body.body) {
+          const sigValid = await paytmVerify(body.body, signature).catch(() => false)
+          if (!sigValid) {
+            await prisma.paymentLog.create({
+              data: { logType: 'callback_signature_failed', rawPayload: txData, signatureValid: false },
+            })
+          }
+        }
 
-      // Verify with Paytm Transaction Status API
-      let verified = false
-      let verifiedTxnId = txnId
-      let verifiedStatus = txnStatus
-      try {
-        const txnStatusResult = await getTransactionStatus({ orderId })
-        verified = true
-        verifiedStatus = txnStatusResult.status
-        verifiedTxnId = txnStatusResult.txnId || txnId
-
-        await prisma.paymentLog.create({
-          data: {
-            paymentId: payment.id,
-            logType: 'status_verification',
-            rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
-            signatureValid: true,
-          },
-        })
-      } catch (err: any) {
-        await prisma.paymentLog.create({
-          data: {
-            paymentId: payment.id,
-            logType: 'status_verification_failed',
-            rawPayload: { error: err?.message || 'Verification failed', orderId },
-            signatureValid: true,
-          },
-        })
-      }
-
-      if (verifiedStatus === 'TXN_SUCCESS') {
-        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'success' } })
-        await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
-
-        const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
-        if (invoice && invoice.quotationId) {
-          await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+        const payment = await prisma.payment.findUnique({ where: { paytmTransactionId: orderId } })
+        if (!payment) {
+          await prisma.paymentLog.create({
+            data: { logType: 'callback_order_not_found', rawPayload: txData },
+          })
+          return res.redirect('/dashboard/invoices?payment=not_found')
         }
 
         await prisma.paymentLog.create({
-          data: { paymentId: payment.id, logType: 'payment_marked_success', rawPayload: { txnId: verifiedTxnId }, signatureValid: true },
+          data: { paymentId: payment.id, logType: 'callback_received', rawPayload: txData },
         })
 
-        await createNotification(payment.userId, 'payment_success', {
-          paymentId: payment.id, invoiceId: payment.invoiceId,
-          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been confirmed. Invoice ${invoice?.invoiceNumber || ''} is now paid.`,
-        })
+        if (payment.status === 'success') return res.redirect('/dashboard/invoices?payment=success')
 
-        await notifyAdmins('payment_completed', {
-          paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
-          message: `Payment of ₹${Number(payment.amount).toLocaleString()} completed by ${payment.userId}.`,
-        })
+        // Verify with Paytm Transaction Status API
+        let verifiedTxnId = txnId
+        let verifiedStatus = txnStatus
+        try {
+          const txnStatusResult = await getTransactionStatus({ orderId })
+          verifiedStatus = txnStatusResult.status
+          verifiedTxnId = txnStatusResult.txnId || txnId
 
-        if (invoice) {
-          await import('@/lib/invoice-pdf').then(m => m.generateAndStoreInvoicePdf(invoice.id)).catch(() => {})
+          await prisma.paymentLog.create({
+            data: {
+              paymentId: payment.id,
+              logType: 'status_verification',
+              rawPayload: { ...txnStatusResult.rawResponse, verifiedStatus, verifiedTxnId },
+            },
+          })
+        } catch (err: any) {
+          await prisma.paymentLog.create({
+            data: {
+              paymentId: payment.id,
+              logType: 'status_verification_failed',
+              rawPayload: { error: err?.message || 'Verification failed', orderId },
+            },
+          })
         }
-      } else if (verifiedStatus === 'TXN_FAILURE') {
-        await prisma.payment.update({ where: { id: payment.id }, data: { status: 'failed' } })
-        await prisma.paymentLog.create({
-          data: { paymentId: payment.id, logType: 'payment_marked_failed', rawPayload: { txnStatus: verifiedStatus }, signatureValid: true },
-        })
-        await createNotification(payment.userId, 'payment_failed', {
-          paymentId: payment.id, invoiceId: payment.invoiceId,
-          message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has failed. Please try again.`,
-        })
+
+        if (verifiedStatus === 'TXN_SUCCESS') {
+          await prisma.payment.update({ where: { id: payment.id }, data: { status: 'success' } })
+          await prisma.invoice.update({ where: { id: payment.invoiceId }, data: { status: 'paid' } })
+
+          const invoice = await prisma.invoice.findUnique({ where: { id: payment.invoiceId } })
+          if (invoice && invoice.quotationId) {
+            await prisma.quotation.update({ where: { id: invoice.quotationId }, data: { status: 'PAID' } })
+          }
+
+          await prisma.paymentLog.create({
+            data: { paymentId: payment.id, logType: 'payment_marked_success', rawPayload: { txnId: verifiedTxnId } },
+          })
+
+          await createNotification(payment.userId, 'payment_success', {
+            paymentId: payment.id, invoiceId: payment.invoiceId,
+            message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has been confirmed. Invoice ${invoice?.invoiceNumber || ''} is now paid.`,
+          })
+
+          await notifyAdmins('payment_completed', {
+            paymentId: payment.id, invoiceId: payment.invoiceId, amount: payment.amount,
+            message: `Payment of ₹${Number(payment.amount).toLocaleString()} completed by ${payment.userId}.`,
+          })
+
+          if (invoice) {
+            await import('@/lib/invoice-pdf').then(m => m.generateAndStoreInvoicePdf(invoice.id)).catch(() => {})
+          }
+
+          return res.redirect('/dashboard/invoices?payment=success')
+        } else if (verifiedStatus === 'TXN_FAILURE') {
+          await prisma.payment.update({ where: { id: payment.id }, data: { status: 'failed' } })
+          await prisma.paymentLog.create({
+            data: { paymentId: payment.id, logType: 'payment_marked_failed', rawPayload: { txnStatus: verifiedStatus } },
+          })
+          await createNotification(payment.userId, 'payment_failed', {
+            paymentId: payment.id, invoiceId: payment.invoiceId,
+            message: `Your payment of ₹${Number(payment.amount).toLocaleString()} has failed. Please try again.`,
+          })
+          return res.redirect('/dashboard/invoices?payment=failed')
+        }
+
+        return res.redirect('/dashboard/invoices')
       }
 
-      return res.json({ ok: true })
+      return res.status(405).json({ error: 'Method not allowed' })
     }
 
     // --- Admin: Verify Payment ---
@@ -1418,10 +1453,10 @@ export default async function handler(req: any, res: any) {
           await prisma.paymentLog.create({
             data: { logType: 'product_callback_order_not_found', rawPayload: txData },
           })
-          return res.status(404).json({ error: 'Purchase not found' })
+          return res.redirect('/products?payment=not_found')
         }
 
-        if (purchase.status === 'success') return res.json({ ok: true })
+        if (purchase.status === 'success') return res.redirect('/products?payment=success')
 
         // Verify with Paytm Transaction Status API
         let verifiedStatus = txnStatus
@@ -1459,6 +1494,7 @@ export default async function handler(req: any, res: any) {
             customerName: purchase.customerName, customerEmail: purchase.customerEmail,
             message: `Product payment completed: ${purchase.productName} by ${purchase.customerName} — ₹${Number(purchase.amount).toLocaleString()}.`,
           })
+          return res.redirect('/products?payment=success')
         } else if (verifiedStatus === 'TXN_FAILURE') {
           await prisma.productPurchase.update({
             where: { id: purchase.id },
@@ -1467,9 +1503,10 @@ export default async function handler(req: any, res: any) {
           await prisma.paymentLog.create({
             data: { logType: 'product_marked_failed', rawPayload: { txnStatus: verifiedStatus } },
           })
+          return res.redirect('/products?payment=failed')
         }
 
-        return res.json({ ok: true })
+        return res.redirect('/products')
       }
 
       return res.status(405).json({ error: 'Method not allowed' })

@@ -6,7 +6,7 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { User, Quotation, AdminStats } from '@/types/api'
-import { Users, FileText, FolderKanban, DollarSign, Clock } from 'lucide-react'
+import { Users, FileText, FolderKanban, DollarSign, Clock, CreditCard, AlertCircle } from 'lucide-react'
 
 interface AdminDashboardProps {
   stats: AdminStats
@@ -27,6 +27,8 @@ export function AdminDashboard({ stats, users, quotations, user }: AdminDashboar
     { value: activeProjects, label: 'Projects', icon: <FolderKanban size={18} />, color: '#059669', bg: 'rgba(5,150,105,0.1)' },
     { value: formatCurrency(stats.revenue), label: 'Total Revenue', icon: <DollarSign size={18} />, color: '#D97706', bg: 'rgba(217,119,6,0.1)' },
     { value: pendingQuotations.length, label: 'Pending Review', icon: <Clock size={18} />, color: '#DC2626', bg: 'rgba(220,38,38,0.1)' },
+    { value: stats.pendingPayments, label: 'Pending Payments', icon: <AlertCircle size={18} />, color: '#EA580C', bg: 'rgba(234,88,12,0.1)' },
+    { value: stats.totalPayments, label: 'Total Payments', icon: <CreditCard size={18} />, color: '#0891B2', bg: 'rgba(8,145,178,0.1)' },
   ]
 
   return (

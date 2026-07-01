@@ -9,7 +9,10 @@ export default async function PaymentsPage() {
   const cookie = await getAuthCookie()
   const api = createServerApi(cookie)
 
-  const payments = await api.payments.list().catch(() => [])
+  const [payments, paymentRequests] = await Promise.all([
+    api.payments.list().catch(() => []),
+    api.paymentRequests.list().catch(() => []),
+  ])
 
-  return <PaymentsList payments={payments} />
+  return <PaymentsList payments={payments} paymentRequests={paymentRequests} />
 }

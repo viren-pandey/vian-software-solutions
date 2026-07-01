@@ -10,7 +10,7 @@ export default async function AdminAnalyticsPage() {
   const cookie = await getAuthCookie()
   const api = createServerApi(cookie)
 
-  const stats = await api.admin.stats().catch(() => ({ users: 0, quotations: 0, projects: 0, revenue: 0, blogPosts: 0, publishedPosts: 0 }))
+  const stats = await api.admin.stats().catch(() => ({ users: 0, quotations: 0, projects: 0, revenue: 0, blogPosts: 0, publishedPosts: 0, pendingPayments: 0, totalPayments: 0 }))
 
   return <AdminAnalytics stats={stats} />
 }

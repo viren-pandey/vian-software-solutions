@@ -31,7 +31,7 @@ export function AdminQuotationDetail({ quotation, userId }: AdminQuotationDetail
   const [notes, setNotes] = useState(q.notes || '')
   const [updating, setUpdating] = useState(false)
 
-  const validNextStatuses = QUOTATION_TRANSITIONS[q.status as QuotationStatus] || []
+  const allStatuses: QuotationStatus[] = ['SUBMITTED', 'UNDER_REVIEW', 'QUOTED', 'REVISION_REQUESTED', 'ACCEPTED', 'PAYMENT_REQUESTED', 'INVOICED', 'PAID', 'REJECTED', 'CANCELLED']
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -122,7 +122,7 @@ export function AdminQuotationDetail({ quotation, userId }: AdminQuotationDetail
                 <label>Status</label>
                 <select value={status} onChange={(e) => setStatus(e.target.value as QuotationStatus)}>
                   <option value={q.status}>{q.status.replace(/_/g, ' ')} (current)</option>
-                  {validNextStatuses.map((s) => (
+                  {allStatuses.filter((s) => s !== q.status).map((s) => (
                     <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                   ))}
                 </select>
