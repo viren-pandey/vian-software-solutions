@@ -62,11 +62,8 @@
         <span class="eyebrow">Featured</span>
         <h2>Latest from Vian.</h2>
       </div>
-      <article class="card reveal" style="padding:40px">
-        <time style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:8px">Strategy</time>
-        <h2 style="margin-bottom:12px">What a business website must prove before payment gateway review</h2>
-        <p style="font-size:15px;color:var(--text-secondary);line-height:1.65;max-width:700px">Payment gateway providers evaluate trust signals, policy completeness, operational consistency, and technical readiness before approving accounts. A structured approach to these requirements reduces friction during review.</p>
-        <a href="/blog" style="display:inline-block;margin-top:16px;font-size:13px;font-weight:600;color:var(--accent)">Read article &rarr;</a>
+      <article class="card reveal" style="padding:40px" id="featuredPost">
+        <div class="loading-state" style="padding:20px">Loading...</div>
       </article>
     </div>
   </section>
@@ -80,75 +77,28 @@
       <div style="display:grid;grid-template-columns:1fr 280px;gap:48px;align-items:start">
 
         <div>
-          <div class="grid grid-3">
-            <article class="card article-card reveal">
-              <time>Strategy</time>
-              <h3>When a spreadsheet should become a web application</h3>
-              <p>Signs that a manual process is ready for a secure dashboard or workflow system, and how to scope the migration.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
-            <article class="card article-card reveal">
-              <time>Automation</time>
-              <h3>Reducing operational overhead with workflow automation</h3>
-              <p>Identify repetitive tasks, map decision points, and build automation that saves hours without introducing risk.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
-            <article class="card article-card reveal">
-              <time>SEO</time>
-              <h3>Technical SEO checks for new company websites</h3>
-              <p>Foundational items that help search engines and customers understand and trust your business website.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
-            <article class="card article-card reveal">
-              <time>Development</time>
-              <h3>Building accessible web forms that convert</h3>
-              <p>Form design, validation patterns, error messaging, and accessibility considerations that improve completion rates.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
-            <article class="card article-card reveal">
-              <time>Design</time>
-              <h3>Information architecture for business websites</h3>
-              <p>How to structure pages, navigation, and content so users find what they need and take action quickly.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
-            <article class="card article-card reveal">
-              <time>Business</time>
-              <h3>Selecting the right tech stack for your startup</h3>
-              <p>Evaluate trade-offs between development speed, scalability, maintenance cost, and team expertise.</p>
-              <a href="/blog">Read article &rarr;</a>
-            </article>
+          <div class="grid grid-3" id="postsGrid">
+            <div class="loading-state" style="grid-column:1/-1;padding:40px">Loading articles...</div>
           </div>
 
-          <div class="pagination reveal">
-            <button class="pagination-btn active" type="button">1</button>
-            <button class="pagination-btn" type="button">2</button>
-            <button class="pagination-btn" type="button">3</button>
+          <div class="pagination reveal" id="pagination">
+            <button class="pagination-btn active" type="button" data-page="1">1</button>
+            <button class="pagination-btn" type="button" data-page="2">2</button>
+            <button class="pagination-btn" type="button" data-page="3">3</button>
           </div>
         </div>
 
         <aside>
           <div class="sidebar-card reveal">
             <h3>Categories</h3>
-            <a href="/blog">Strategy</a>
-            <a href="/blog">Automation</a>
-            <a href="/blog">SEO</a>
-            <a href="/blog">Development</a>
-            <a href="/blog">Design</a>
-            <a href="/blog">Business</a>
+            <div id="categoriesList">
+              <a href="/blog">Loading...</a>
+            </div>
           </div>
           <div class="sidebar-card reveal">
             <h3>Tags</h3>
-            <div class="pill-row">
-              <span class="pill">Websites</span>
-              <span class="pill">Software</span>
-              <span class="pill">SEO</span>
-              <span class="pill">Automation</span>
-              <span class="pill">Design</span>
-              <span class="pill">Growth</span>
-              <span class="pill">Security</span>
-              <span class="pill">Performance</span>
-              <span class="pill">Analytics</span>
-              <span class="pill">Mobile</span>
+            <div class="pill-row" id="tagsList">
+              <span class="pill">Loading...</span>
             </div>
           </div>
         </aside>
@@ -221,6 +171,152 @@
 
 <button class="back-to-top" data-back-top type="button" aria-label="Back to top">&uarr;</button>
 <div class="toast" data-toast></div>
+
+<script>
+let currentPage = 1
+let totalPosts = 0
+const POSTS_PER_PAGE = 6
+
+function esc(s) {
+  const d = document.createElement('div')
+  d.textContent = s || ''
+  return d.innerHTML
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+async function fetchPosts(page = 1) {
+  try {
+    const res = await fetch(`/api/blogs?limit=${POSTS_PER_PAGE}&offset=${(page - 1) * POSTS_PER_PAGE}`)
+    if (!res.ok) throw new Error('Failed to fetch posts')
+    const data = await res.json()
+    totalPosts = data.total
+    return data.posts
+  } catch (e) {
+    console.error('Error fetching posts:', e)
+    return []
+  }
+}
+
+function renderPostCard(post, isFeatured = false) {
+  const category = post.category || 'General'
+  const date = post.publishedAt ? formatDate(post.publishedAt) : ''
+  const excerpt = post.excerpt ? esc(post.excerpt).substring(0, 150) + '...' : ''
+  const link = `/blog/${esc(post.slug)}`
+
+  if (isFeatured) {
+    return `
+      <time style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);margin-bottom:8px">${esc(category)}</time>
+      <h2 style="margin-bottom:12px">${esc(post.title)}</h2>
+      <p style="font-size:15px;color:var(--text-secondary);line-height:1.65;max-width:700px">${excerpt}</p>
+      <a href="${link}" style="display:inline-block;margin-top:16px;font-size:13px;font-weight:600;color:var(--accent)">Read article &rarr;</a>
+    `
+  }
+
+  return `
+    <article class="card article-card reveal">
+      <time>${esc(category)}</time>
+      <h3>${esc(post.title)}</h3>
+      <p>${excerpt}</p>
+      <a href="${link}">Read article &rarr;</a>
+    </article>
+  `
+}
+
+function renderPagination() {
+  const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE)
+  const pagination = document.getElementById('pagination')
+  if (!pagination || totalPages <= 1) {
+    if (pagination) pagination.style.display = 'none'
+    return
+  }
+  pagination.style.display = 'flex'
+  let html = ''
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" type="button" data-page="${i}">${i}</button>`
+  }
+  pagination.innerHTML = html
+
+  pagination.querySelectorAll('.pagination-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPage = parseInt(btn.dataset.page)
+      loadPosts()
+    })
+  })
+}
+
+function renderCategories(posts) {
+  const categories = [...new Set(posts.map(p => p.category).filter(Boolean))]
+  const container = document.getElementById('categoriesList')
+  if (!container) return
+  container.innerHTML = categories.map(c => `<a href="/blog?category=${encodeURIComponent(c)}">${esc(c)}</a>`).join('')
+}
+
+function renderTags(posts) {
+  const allTags = posts.flatMap(p => p.tags || [])
+  const uniqueTags = [...new Set(allTags)].slice(0, 12)
+  const container = document.getElementById('tagsList')
+  if (!container) return
+  container.innerHTML = uniqueTags.map(t => `<span class="pill">${esc(t)}</span>`).join('')
+}
+
+async function loadPosts() {
+  const grid = document.getElementById('postsGrid')
+  const featured = document.getElementById('featuredPost')
+
+  grid.innerHTML = '<div class="loading-state" style="grid-column:1/-1;padding:40px">Loading articles...</div>'
+  featured.innerHTML = '<div class="loading-state" style="padding:20px">Loading...</div>'
+
+  const posts = await fetchPosts(currentPage)
+
+  if (posts.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;padding:64px;text-align:center;border:1px dashed var(--border);border-radius:var(--radius-lg)">
+        <h3>No articles yet</h3>
+        <p style="color:var(--text-secondary)">Check back soon for new content.</p>
+      </div>
+    `
+    featured.innerHTML = '<p style="color:var(--text-secondary);text-align:center">No featured article</p>'
+    return
+  }
+
+  // Render featured post (first post)
+  featured.innerHTML = renderPostCard(posts[0], true)
+
+  // Render other posts in grid
+  const otherPosts = posts.slice(1)
+  grid.innerHTML = otherPosts.map(p => renderPostCard(p)).join('')
+
+  // Re-observe for reveal animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) entry.target.classList.add('visible')
+    })
+  }, { threshold: 0.16 })
+  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el))
+
+  // Fetch all posts for categories/tags (only on first page)
+  if (currentPage === 1) {
+    try {
+      const res = await fetch('/api/blogs?limit=50')
+      const data = await res.json()
+      renderCategories(data.posts)
+      renderTags(data.posts)
+    } catch (e) {
+      console.error('Error fetching all posts for categories/tags:', e)
+    }
+  }
+
+  renderPagination()
+}
+
+// Load on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  loadPosts()
+})
+</script>
 
 </body>
 </html>

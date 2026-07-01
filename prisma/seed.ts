@@ -145,7 +145,7 @@ const BLOG_POSTS = [
     excerpt: 'A logo alone doesn\'t build a brand. Explore the comprehensive approach to brand building that resonates with today\'s discerning customers.',
     category: 'Business',
     tags: ['branding', 'business strategy', 'digital presence', 'marketing'],
-    published: false,
+    published: true,
     content: `<h2>Brand Is Not a Logo</h2>
 <p>Too many businesses treat branding as a design project. You get a logo, pick some colors, and call it done. But a brand is the sum total of every interaction a customer has with your business — from your website to your support emails to the way your invoices look.</p>
 

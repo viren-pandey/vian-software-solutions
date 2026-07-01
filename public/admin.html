@@ -171,6 +171,7 @@ async function loadPage(page) {
     else if (page === 'projects') await showProjects(main)
     else if (page === 'payments') await showPayments(main)
     else if (page === 'chats') await showChats(main)
+    else if (page === 'blogs') await showBlogs(main)
   } catch (e) {
     main.innerHTML = `<div class="empty-state" style="text-align:center;padding:64px"><h3>Error</h3><p>${esc(e.message)}</p></div>`
   }
@@ -607,6 +608,144 @@ window.sendChatMessage = async function(e, quotationId) {
   return false
 }
 
+async function showBlogs(main) {
+  const blogs = await api('/api/admin/blogs')
+  main.innerHTML = `
+    <div class="admin-header">
+      <div>
+        <h1>Blog Posts</h1>
+        <p class="subtitle">Manage blog posts</p>
+      </div>
+      <button class="btn btn-primary" onclick="showBlogForm()">New Post</button>
+    </div>
+    ${blogs.length === 0 ? `
+      <div class="empty-state" style="text-align:center;padding:64px;border:1px dashed var(--border);border-radius:var(--radius-lg)">
+        <h3>No blog posts yet</h3>
+        <p style="color:var(--text-secondary)">Create your first blog post to get started.</p>
+      </div>
+    ` : `
+      <table class="admin-table">
+        <thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Published</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>${blogs.map((b) => `
+          <tr>
+            <td><strong>${esc(b.title)}</strong></td>
+            <td>${esc(b.category || '-')}</td>
+            <td><span class="badge badge-${b.published ? 'success' : 'pending'}">${b.published ? 'Published' : 'Draft'}</span></td>
+            <td>${b.publishedAt ? new Date(b.publishedAt).toLocaleDateString() : '-'}</td>
+            <td>${new Date(b.createdAt).toLocaleDateString()}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;margin-right:4px" onclick="editBlog('${b.id}')">Edit</button>
+              <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="deleteBlog('${b.id}')">Delete</button>
+            </td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    `}
+  `
+}
+
+window.showBlogForm = function(blog = null) {
+  const main = document.querySelector('.admin-main')
+  const isEdit = !!blog
+  main.innerHTML = `
+    <div class="admin-header">
+      <div>
+        <h1>${isEdit ? 'Edit' : 'New'} Blog Post</h1>
+      </div>
+      <button class="btn btn-secondary" onclick="loadPage('blogs')">Cancel</button>
+    </div>
+    <form class="dash-form" id="blogForm" style="max-width:800px">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="blogTitle" required placeholder="Enter post title" value="${esc(blog?.title || '')}">
+      </div>
+      <div class="form-group">
+        <label>Slug (URL)</label>
+        <input type="text" id="blogSlug" required placeholder="auto-generated-from-title" value="${esc(blog?.slug || '')}">
+        <small style="color:var(--text-tertiary)">Used in URL. Must be unique.</small>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <input type="text" id="blogCategory" placeholder="e.g. Development, Automation, SEO" value="${esc(blog?.category || '')}">
+      </div>
+      <div class="form-group">
+        <label>Tags (comma-separated)</label>
+        <input type="text" id="blogTags" placeholder="web development, react, nextjs" value="${esc((blog?.tags || []).join(', '))}">
+      </div>
+      <div class="form-group">
+        <label>Excerpt</label>
+        <textarea id="blogExcerpt" rows="3" placeholder="Short summary for listings">${esc(blog?.excerpt || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Content (HTML)</label>
+        <textarea id="blogContent" rows="20" placeholder="Write your blog post content in HTML...">${esc(blog?.content || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="blogPublished" ${blog?.published ? 'checked' : ''}>
+          <span>Published</span>
+        </label>
+      </div>
+      <div class="quick-actions">
+        <button type="submit" class="btn btn-primary">${isEdit ? 'Update' : 'Create'}</button>
+        <button type="button" class="btn btn-secondary" onclick="loadPage('blogs')">Cancel</button>
+      </div>
+    </form>
+  `
+  document.getElementById('blogForm').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const btn = e.target.querySelector('button[type="submit"]')
+    btn.disabled = true
+    btn.textContent = isEdit ? 'Updating...' : 'Creating...'
+    try {
+      const data = {
+        title: document.getElementById('blogTitle').value,
+        slug: document.getElementById('blogSlug').value,
+        category: document.getElementById('blogCategory').value || null,
+        tags: document.getElementById('blogTags').value.split(',').map(s => s.trim()).filter(Boolean),
+        excerpt: document.getElementById('blogExcerpt').value || null,
+        content: document.getElementById('blogContent').value,
+        published: document.getElementById('blogPublished').checked,
+      }
+      if (isEdit) {
+        await api('/api/admin/blogs/' + blog.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        showToast('Blog post updated')
+      } else {
+        await api('/api/admin/blogs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        showToast('Blog post created')
+      }
+      loadPage('blogs')
+    } catch (e) {
+      showToast(e.message)
+      btn.disabled = false
+      btn.textContent = isEdit ? 'Update' : 'Create'
+    }
+  })
+}
+
+window.editBlog = function(id) {
+  api('/api/admin/blogs/' + id).then(blog => showBlogForm(blog))
+}
+
+window.deleteBlog = async function(id) {
+  if (!confirm('Delete this blog post? This cannot be undone.')) return
+  try {
+    await api('/api/admin/blogs/' + id, { method: 'DELETE' })
+    showToast('Blog post deleted')
+    loadPage('blogs')
+  } catch (e) {
+    showToast(e.message)
+  }
+}
+
 async function fetchAdminNotifications() {
   try {
     const data = await api('/api/notifications')
@@ -670,6 +809,7 @@ function logout() {
           <a data-page="projects" onclick="loadPage('projects')">Projects</a>
           <a data-page="payments" onclick="loadPage('payments')">Payments</a>
           <a data-page="chats" onclick="loadPage('chats')">Chats</a>
+          <a data-page="blogs" onclick="loadPage('blogs')">Blogs</a>
           <h3>Account</h3>
           <a style="position:relative" onclick="showAdminNotifications()">Notifications <span id="adminNotifBadge" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:999px;font-weight:700"></span></a>
           <a onclick="logout()">Sign Out</a>
